@@ -135,8 +135,9 @@ Requirements:
 
 - Node.js 20 or newer.
 - `npm`.
-- Optional: Codex CLI for the bounded synthesis step.
-- Optional: cron for scheduled local runs.
+- Optional: an agent CLI for the bounded synthesis step.
+- Optional: cron, Task Scheduler, launchd, systemd, or another scheduler for
+  recurring runs.
 
 Commands:
 
@@ -146,13 +147,17 @@ npm run memory:maintain:dry-run
 npm run memory:maintain
 npm run memory:rotate
 npm run memory:index
-npm run memory:codex
-npm run memory:cron:install
+npm run memory:synthesis
+npm run memory:schedule:install
 ```
 
-The deterministic rotation and archive-index steps do not require Codex. The
-full `memory:maintain` command runs deterministic maintenance first, then an
-optional bounded Codex synthesis pass.
+The deterministic rotation and archive-index steps do not require any AI
+runtime. The full `memory:maintain` command runs deterministic maintenance
+first, then runs optional bounded synthesis only when
+`tools/memory-maintenance.config.json` enables it.
+
+The synthesis command is configurable. It can point to Codex, Claude CLI,
+OpenClaw, Ollama, a local script, or no agent at all.
 
 ## Maintenance Safety Model
 
@@ -161,8 +166,8 @@ The maintenance tool is conservative:
 - archived entry bodies are copied unchanged;
 - archive files are append-only;
 - dry-run mode reports planned moves before editing;
-- Codex runs in a temporary workspace;
-- Codex copy-back is restricted to allowlisted paths;
+- agent synthesis runs in a temporary workspace;
+- agent synthesis copy-back is restricted to allowlisted paths;
 - deletions from the temporary workspace are rejected.
 
 Always review generated diffs before committing them.
@@ -183,6 +188,44 @@ Common fields:
 - `workspace.policyPaths`: local instruction files agents should respect.
 - `protectedPaths`: files copied into the temp workspace but not writable by
   synthesis.
+- `synthesis`: optional agent command. It supports placeholders:
+  `{workspace}`, `{output}`, `{prompt}`, and `{runJson}`.
+
+Examples:
+
+```json
+{
+  "synthesis": {
+    "enabled": true,
+    "provider": "codex",
+    "command": "codex",
+    "args": ["exec", "--full-auto", "-C", "{workspace}", "-o", "{output}", "{prompt}"]
+  }
+}
+```
+
+```json
+{
+  "synthesis": {
+    "enabled": true,
+    "provider": "ollama",
+    "command": "ollama",
+    "args": ["run", "llama3.1"],
+    "stdin": "prompt"
+  }
+}
+```
+
+```json
+{
+  "synthesis": {
+    "enabled": true,
+    "provider": "claude",
+    "command": "claude",
+    "args": ["-p", "{prompt}"]
+  }
+}
+```
 
 ## Repository Layout
 
@@ -200,6 +243,7 @@ tools/
   memory-maintenance.config.json
   run-memory-maintenance-nightly.sh
   install-memory-maintenance-cron.sh
+  install-memory-maintenance-schedule.mjs
 ```
 
 This layout is a starter, not a law. If another structure better fits your

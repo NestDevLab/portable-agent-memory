@@ -3,9 +3,46 @@
   "archiveRoot": "memory/archive",
   "summariesRoot": "memory/summaries",
   "maintenanceRoot": "memory/maintenance",
-  "codex": {
-    "model": "gpt-5.4",
-    "reasoningEffort": "medium"
+  "synthesis": {
+    "enabled": false,
+    "provider": "none",
+    "command": "",
+    "args": [],
+    "stdin": "none",
+    "examples": {
+      "codex": {
+        "provider": "codex",
+        "command": "codex",
+        "args": [
+          "exec",
+          "--skip-git-repo-check",
+          "--full-auto",
+          "--ephemeral",
+          "-C",
+          "{workspace}",
+          "-o",
+          "{output}",
+          "{prompt}"
+        ]
+      },
+      "claude": {
+        "provider": "claude",
+        "command": "claude",
+        "args": [
+          "-p",
+          "{prompt}"
+        ]
+      },
+      "ollama": {
+        "provider": "ollama",
+        "command": "ollama",
+        "args": [
+          "run",
+          "llama3.1"
+        ],
+        "stdin": "prompt"
+      }
+    }
   },
   "workspace": {
     "name": "Example Memory Workspace",

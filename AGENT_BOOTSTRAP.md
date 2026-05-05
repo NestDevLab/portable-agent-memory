@@ -25,8 +25,8 @@ Required outcomes:
 - a place for raw sources or references;
 - instructions that tell future agents how to read, update, and maintain memory.
 
-Do not add unnecessary infrastructure. Do not add cron, vector search, SQLite,
-MCP, or a large wiki unless this repository actually needs it.
+Do not add unnecessary infrastructure. Do not add a scheduler, vector search,
+SQLite, MCP, or a large wiki unless this repository actually needs it.
 
 Do not store secrets, credentials, cookies, private keys, or unnecessary raw
 private communications.
@@ -71,10 +71,14 @@ Then add or adapt:
 - tools/memory-maintenance.mjs;
 - tools/memory-maintenance.config.json;
 - package scripts;
-- optional cron runner and installer;
+- optional scheduler runner and installer;
 - tests or a dry-run verification command.
 
 Run a dry-run before any real maintenance.
+
+If synthesis is needed, configure it for the available runtime instead of
+assuming Codex. The command may be Codex, Claude CLI, OpenClaw, Ollama, a local
+script, or any other agent command that can work from a temporary workspace.
 ```
 
 ## Ongoing Session Closeout Prompt

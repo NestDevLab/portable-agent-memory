@@ -9,8 +9,8 @@
     "memory:maintain:dry-run": "node tools/memory-maintenance.mjs maintain --dry-run",
     "memory:rotate": "node tools/memory-maintenance.mjs rotate",
     "memory:index": "node tools/memory-maintenance.mjs index",
-    "memory:codex": "node tools/memory-maintenance.mjs codex",
-    "memory:cron:install": "bash tools/install-memory-maintenance-cron.sh",
+    "memory:synthesis": "node tools/memory-maintenance.mjs synthesis",
+    "memory:schedule:install": "node tools/install-memory-maintenance-schedule.mjs",
     "test": "node --test tools/test-memory-maintenance.mjs"
   },
   "keywords": [

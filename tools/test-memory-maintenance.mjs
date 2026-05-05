@@ -12,7 +12,7 @@ import {
   regenerateArchiveIndexes,
   renderRunReport,
   rotateManagedLogs,
-  runCodexSynthesis,
+  runAgentSynthesis,
   runMaintenance
 } from "./memory-maintenance.mjs";
 
@@ -242,17 +242,24 @@ test("malformed archive file stops rotation for that target log", () => {
   assert.ok(conversationActive.includes("## 2025-12-01 - Old Item"));
 });
 
-test("codex copy-back rejects out-of-scope changes", () => {
+test("agent synthesis copy-back rejects out-of-scope changes", () => {
   const workspaceRoot = makeTempWorkspace();
   writeManagedLogs(workspaceRoot);
   const config = loadConfig();
+  const mocksynthesisPath = path.join(workspaceRoot, "mock-agent.sh");
+  config.synthesis = {
+    args: ["-C", "{workspace}", "-o", "{output}", "{prompt}"],
+    command: mocksynthesisPath,
+    enabled: true,
+    provider: "mock-agent",
+    stdin: "none"
+  };
   const rotation = rotateManagedLogs(workspaceRoot, config, { now: FIXED_NOW });
   const archiveIndexing = regenerateArchiveIndexes(workspaceRoot, config);
   const manifest = buildRunManifest(workspaceRoot, config, rotation, archiveIndexing, { now: FIXED_NOW, runId: "test-run" });
-  const mockCodexPath = path.join(workspaceRoot, "mock-codex.sh");
 
   fs.writeFileSync(
-    mockCodexPath,
+    mocksynthesisPath,
     [
       "#!/usr/bin/env bash",
       "set -eu",
@@ -279,26 +286,33 @@ test("codex copy-back rejects out-of-scope changes", () => {
     ].join("\n"),
     "utf8"
   );
-  fs.chmodSync(mockCodexPath, 0o755);
+  fs.chmodSync(mocksynthesisPath, 0o755);
 
-  const result = runCodexSynthesis(workspaceRoot, config, manifest, { codexBin: mockCodexPath });
+  const result = runAgentSynthesis(workspaceRoot, config, manifest);
 
   assert.equal(result.status, "rejected");
   assert.deepEqual(result.invalidPaths, ["memory/sources/illegal.md"]);
   assert.equal(fs.existsSync(path.join(workspaceRoot, "memory", "sources", "illegal.md")), false);
 });
 
-test("codex can update only allowed targets and copy them back", () => {
+test("agent synthesis can update only allowed targets and copy them back", () => {
   const workspaceRoot = makeTempWorkspace();
   writeManagedLogs(workspaceRoot);
   const config = loadConfig();
+  const mocksynthesisPath = path.join(workspaceRoot, "mock-agent-allowed.sh");
+  config.synthesis = {
+    args: ["-C", "{workspace}", "-o", "{output}", "{prompt}"],
+    command: mocksynthesisPath,
+    enabled: true,
+    provider: "mock-agent",
+    stdin: "none"
+  };
   const rotation = rotateManagedLogs(workspaceRoot, config, { now: FIXED_NOW });
   const archiveIndexing = regenerateArchiveIndexes(workspaceRoot, config);
   const manifest = buildRunManifest(workspaceRoot, config, rotation, archiveIndexing, { now: FIXED_NOW, runId: "allowed-run" });
-  const mockCodexPath = path.join(workspaceRoot, "mock-codex-allowed.sh");
 
   fs.writeFileSync(
-    mockCodexPath,
+    mocksynthesisPath,
     [
       "#!/usr/bin/env bash",
       "set -eu",
@@ -327,9 +341,9 @@ test("codex can update only allowed targets and copy them back", () => {
     ].join("\n"),
     "utf8"
   );
-  fs.chmodSync(mockCodexPath, 0o755);
+  fs.chmodSync(mocksynthesisPath, 0o755);
 
-  const result = runCodexSynthesis(workspaceRoot, config, manifest, { codexBin: mockCodexPath });
+  const result = runAgentSynthesis(workspaceRoot, config, manifest);
 
   assert.equal(result.status, "applied");
   assert.deepEqual(result.changedPaths.sort(), ["memory/index.md", "memory/summaries/2026/2026-Q2.md"]);
@@ -340,25 +354,31 @@ test("codex can update only allowed targets and copy them back", () => {
   );
 });
 
-test("codex run passes the configured model and reasoning effort", () => {
+test("agent synthesis run uses configured command arguments", () => {
   const workspaceRoot = makeTempWorkspace();
   writeManagedLogs(workspaceRoot);
   const config = loadConfig();
+  const mocksynthesisPath = path.join(workspaceRoot, "mock-agent-args.sh");
+  config.synthesis = {
+    args: ["-C", "{workspace}", "-o", "{output}", "--prompt", "{prompt}"],
+    command: mocksynthesisPath,
+    enabled: true,
+    provider: "mock-agent",
+    stdin: "none"
+  };
   const rotation = rotateManagedLogs(workspaceRoot, config, { now: FIXED_NOW });
   const archiveIndexing = regenerateArchiveIndexes(workspaceRoot, config);
   const manifest = buildRunManifest(workspaceRoot, config, rotation, archiveIndexing, {
     now: FIXED_NOW,
     runId: "args-run"
   });
-  const mockCodexPath = path.join(workspaceRoot, "mock-codex-args.sh");
-
   fs.writeFileSync(
-    mockCodexPath,
+    mocksynthesisPath,
     [
       "#!/usr/bin/env bash",
       "set -eu",
       "script_dir=\"$(cd \"$(dirname \"$0\")\" && pwd)\"",
-      "printf '%s\\n' \"$@\" > \"$script_dir/mock-codex-args.txt\"",
+      "printf '%s\\n' \"$@\" > \"$script_dir/mock-agent-args.txt\"",
       "workspace=''",
       "output=''",
       "while [ \"$#\" -gt 0 ]; do",
@@ -384,20 +404,21 @@ test("codex run passes the configured model and reasoning effort", () => {
     ].join("\n"),
     "utf8"
   );
-  fs.chmodSync(mockCodexPath, 0o755);
+  fs.chmodSync(mocksynthesisPath, 0o755);
 
-  const result = runCodexSynthesis(workspaceRoot, config, manifest, { codexBin: mockCodexPath });
-  const argvLog = fs.readFileSync(path.join(workspaceRoot, "mock-codex-args.txt"), "utf8");
+  const result = runAgentSynthesis(workspaceRoot, config, manifest);
+  const argvLog = fs.readFileSync(path.join(workspaceRoot, "mock-agent-args.txt"), "utf8");
 
   assert.equal(result.status, "applied");
-  assert.equal(result.metrics.model, "gpt-5.4");
-  assert.equal(result.metrics.reasoningEffort, "medium");
+  assert.equal(result.metrics.provider, "mock-agent");
+  assert.equal(result.metrics.command, mocksynthesisPath);
   assert.equal(result.metrics.tokenUsage.status, "unavailable");
   assert.equal(typeof result.metrics.durationMs, "number");
   assert.ok(result.metrics.promptChars > 0);
   assert.ok(result.metrics.promptWords > 0);
-  assert.ok(argvLog.includes("-m\ngpt-5.4\n"));
-  assert.ok(argvLog.includes('-c\nmodel_reasoning_effort="medium"\n'));
+  assert.ok(argvLog.includes("-C\n"));
+  assert.ok(argvLog.includes("-o\n"));
+  assert.ok(argvLog.includes("--prompt\n"));
 });
 
 test("maintenance manifest and report include performance metrics", () => {
@@ -410,30 +431,37 @@ test("maintenance manifest and report include performance metrics", () => {
     now: FIXED_NOW,
     startedAt: "2026-04-23T00:00:00.000Z"
   });
-  const report = renderRunReport(result.manifest, result.codexStatus, true);
+  const report = renderRunReport(result.manifest, result.synthesisStatus, true);
 
   assert.equal(result.manifest.performance.startedAt, "2026-04-23T00:00:00.000Z");
-  assert.equal(result.manifest.performance.codex.model, "gpt-5.4");
-  assert.equal(result.manifest.performance.codex.tokenUsage.status, "unavailable");
+  assert.equal(result.manifest.performance.synthesis.provider, "none");
+  assert.equal(result.manifest.performance.synthesis.tokenUsage.status, "unavailable");
   assert.match(report, /## Performance/);
-  assert.match(report, /Codex model: `gpt-5\.4`/);
+  assert.match(report, /Synthesis provider: `none`/);
   assert.match(report, /Token usage: unavailable/);
 });
 
-test("missing codex binary fails with a clear error", () => {
+test("missing synthesis binary fails with a clear error", () => {
   const workspaceRoot = makeTempWorkspace();
   writeManagedLogs(workspaceRoot);
   const config = loadConfig();
+  config.synthesis = {
+    args: [],
+    command: "definitely-missing-synthesis-binary",
+    enabled: true,
+    provider: "missing-agent",
+    stdin: "none"
+  };
   const rotation = rotateManagedLogs(workspaceRoot, config, { now: FIXED_NOW });
   const archiveIndexing = regenerateArchiveIndexes(workspaceRoot, config);
   const manifest = buildRunManifest(workspaceRoot, config, rotation, archiveIndexing, {
     now: FIXED_NOW,
-    runId: "missing-codex"
+    runId: "missing-synthesis"
   });
 
   assert.throws(
-    () => runCodexSynthesis(workspaceRoot, config, manifest, { codexBin: "definitely-missing-codex-binary" }),
-    /Codex binary not found/
+    () => runAgentSynthesis(workspaceRoot, config, manifest),
+    /Synthesis command failed to start/
   );
 });
 

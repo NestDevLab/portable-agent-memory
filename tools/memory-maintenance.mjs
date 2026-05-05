@@ -12,8 +12,8 @@ const ARCHIVE_ENTRIES_MARKER = "## Archived Entries";
 const TOP_LEVEL_HEADER_RE = /^## .*(?:\r?\n|$)/gm;
 const ISO_DATE_ONLY_RE = /^## (\d{4}-\d{2}-\d{2})$/;
 const ISO_DATE_TITLE_RE = /^## (\d{4}-\d{2}-\d{2}) - .+$/;
-const TEMP_WORKSPACE_IGNORED_PREFIXES = [".codex/"];
-const TEMP_WORKSPACE_IGNORED_PATHS = new Set([".codex"]);
+const TEMP_WORKSPACE_IGNORED_PREFIXES = [".codex/", ".claude/", ".opencode/"];
+const TEMP_WORKSPACE_IGNORED_PATHS = new Set([".codex", ".claude", ".opencode"]);
 
 function loadConfig(configPath = CONFIG_PATH) {
   const raw = fs.readFileSync(configPath, "utf8");
@@ -23,22 +23,35 @@ function loadConfig(configPath = CONFIG_PATH) {
     throw new Error("memory-maintenance config requires at least one managed log");
   }
 
-  if (!config.codex || typeof config.codex !== "object") {
-    config.codex = {};
-  }
-
-  if (typeof config.codex.model !== "string" || config.codex.model.trim() === "") {
-    config.codex.model = "gpt-5.4";
-  }
-
-  if (
-    typeof config.codex.reasoningEffort !== "string" ||
-    config.codex.reasoningEffort.trim() === ""
-  ) {
-    config.codex.reasoningEffort = "medium";
-  }
+  config.synthesis = normalizeSynthesisConfig(config.synthesis);
 
   return config;
+}
+
+function normalizeSynthesisConfig(input) {
+  const synthesis = input && typeof input === "object" ? { ...input } : {};
+
+  if (typeof synthesis.enabled !== "boolean") {
+    synthesis.enabled = false;
+  }
+
+  if (typeof synthesis.provider !== "string" || synthesis.provider.trim() === "") {
+    synthesis.provider = "none";
+  }
+
+  if (typeof synthesis.command !== "string") {
+    synthesis.command = "";
+  }
+
+  if (!Array.isArray(synthesis.args)) {
+    synthesis.args = [];
+  }
+
+  if (typeof synthesis.stdin !== "string" || !["prompt", "none"].includes(synthesis.stdin)) {
+    synthesis.stdin = "none";
+  }
+
+  return synthesis;
 }
 
 function toPosixPath(inputPath) {
@@ -592,7 +605,7 @@ function makeReadOnlyTree(rootDir, writableMatcher) {
   }
 }
 
-function buildCodexAllowRules(config) {
+function buildAgentAllowRules(config) {
   const workspace = config.workspace ?? {};
   const indexPath = typeof workspace.indexPath === "string" && workspace.indexPath.trim() !== ""
     ? workspace.indexPath
@@ -614,7 +627,7 @@ function buildCodexAllowRules(config) {
   };
 }
 
-function isPathAllowedForCodex(relativePath, allowRules) {
+function isPathAllowedForAgent(relativePath, allowRules) {
   const normalized = toPosixPath(relativePath);
 
   if (allowRules.exactPaths.has(normalized)) {
@@ -624,7 +637,7 @@ function isPathAllowedForCodex(relativePath, allowRules) {
   return allowRules.prefixPaths.some((prefix) => normalized.startsWith(prefix));
 }
 
-function buildCodexPrompt(config, manifest) {
+function buildSynthesisPrompt(config, manifest) {
   const managedLogs = config.managedLogs.map((logConfig) => `- \`${logConfig.source}\``).join("\n");
   const allowedWrites = manifest.allowedWritePaths.map((entry) => `- \`${entry}\``).join("\n");
   const protectedPaths = manifest.protectedPaths.map((entry) => `- \`${entry}\``).join("\n");
@@ -696,7 +709,7 @@ function createTempWorkspace(workspaceRoot, config, allowRules) {
     copyRecursive(sourcePath, targetPath);
   }
 
-  makeReadOnlyTree(tempRoot, (relativePath) => isPathAllowedForCodex(relativePath, allowRules));
+  makeReadOnlyTree(tempRoot, (relativePath) => isPathAllowedForAgent(relativePath, allowRules));
 
   return tempRoot;
 }
@@ -725,8 +738,8 @@ function diffSnapshots(beforeSnapshot, afterSnapshot) {
   return changes;
 }
 
-function validateCodexChanges(changes, allowRules) {
-  const invalid = changes.filter((change) => !isPathAllowedForCodex(change.path, allowRules) || change.type === "deleted");
+function validateAgentChanges(changes, allowRules) {
+  const invalid = changes.filter((change) => !isPathAllowedForAgent(change.path, allowRules) || change.type === "deleted");
   return {
     invalid,
     valid: changes.filter((change) => !invalid.includes(change))
@@ -771,15 +784,23 @@ function countWords(text) {
 
 function makeUnavailableTokenUsage() {
   return {
-    reason: "Codex CLI exec output does not expose token usage for this run.",
+    reason: "The configured synthesis command did not report token usage.",
     status: "unavailable"
   };
+}
+
+function applyCommandTemplate(value, replacements) {
+  return String(value)
+    .replaceAll("{workspace}", replacements.workspace)
+    .replaceAll("{output}", replacements.output)
+    .replaceAll("{prompt}", replacements.prompt)
+    .replaceAll("{runJson}", replacements.runJson);
 }
 
 function buildRunManifest(workspaceRoot, config, rotation, archiveIndexing, options = {}) {
   const runId = options.runId ?? timestampForRunId();
   const now = options.now ?? new Date();
-  const allowRules = buildCodexAllowRules(config);
+  const allowRules = buildAgentAllowRules(config);
   const managedLogs = config.managedLogs.map((entry) => entry.source);
   const allowedWritePaths = [
     ...[...allowRules.exactPaths].sort((left, right) => left.localeCompare(right)),
@@ -792,9 +813,10 @@ function buildRunManifest(workspaceRoot, config, rotation, archiveIndexing, opti
 
   return {
     archiveIndexing,
-    codex: {
-      model: config.codex.model,
-      reasoningEffort: config.codex.reasoningEffort
+    synthesis: {
+      command: config.synthesis.command,
+      enabled: config.synthesis.enabled,
+      provider: config.synthesis.provider
     },
     generatedAt: now.toISOString(),
     managedLogs,
@@ -815,14 +837,14 @@ function buildRunManifest(workspaceRoot, config, rotation, archiveIndexing, opti
   };
 }
 
-function renderRunReport(manifest, codexStatus, dryRun) {
+function renderRunReport(manifest, synthesisStatus, dryRun) {
   const lines = [
     "# Memory Maintenance Report",
     "",
     `- Run id: \`${manifest.runId}\``,
     `- Generated at: \`${manifest.generatedAt}\``,
     `- Mode: \`${dryRun ? "dry-run" : "apply"}\``,
-    `- Codex status: \`${codexStatus.status}\``,
+    `- Synthesis status: \`${synthesisStatus.status}\``,
     ""
   ];
 
@@ -830,16 +852,16 @@ function renderRunReport(manifest, codexStatus, dryRun) {
     lines.push("## Performance", "");
     lines.push(`- Total duration: ${manifest.performance.durationMs} ms`);
 
-    if (manifest.performance.codex) {
-      const codex = manifest.performance.codex;
-      lines.push(`- Codex duration: ${codex.durationMs} ms`);
-      lines.push(`- Codex model: \`${codex.model}\``);
-      lines.push(`- Codex reasoning effort: \`${codex.reasoningEffort}\``);
-      lines.push(`- Codex prompt size: ${codex.promptChars} chars, ${codex.promptWords} words`);
-      lines.push(`- Codex output: \`${codex.outputMessagePath}\``);
-      lines.push(`- Token usage: ${codex.tokenUsage.status}`);
-      if (codex.tokenUsage.reason) {
-        lines.push(`- Token usage note: ${codex.tokenUsage.reason}`);
+    if (manifest.performance.synthesis) {
+      const synthesis = manifest.performance.synthesis;
+      lines.push(`- Synthesis duration: ${synthesis.durationMs} ms`);
+      lines.push(`- Synthesis provider: \`${synthesis.provider}\``);
+      lines.push(`- Synthesis command: \`${synthesis.command || "none"}\``);
+      lines.push(`- Synthesis prompt size: ${synthesis.promptChars} chars, ${synthesis.promptWords} words`);
+      lines.push(`- Synthesis output: \`${synthesis.outputMessagePath}\``);
+      lines.push(`- Token usage: ${synthesis.tokenUsage.status}`);
+      if (synthesis.tokenUsage.reason) {
+        lines.push(`- Token usage note: ${synthesis.tokenUsage.reason}`);
       }
     }
 
@@ -864,18 +886,18 @@ function renderRunReport(manifest, codexStatus, dryRun) {
     );
   }
 
-  lines.push("", "## Codex", "");
+  lines.push("", "## Synthesis", "");
 
-  if (codexStatus.message) {
-    lines.push(`- ${codexStatus.message}`);
+  if (synthesisStatus.message) {
+    lines.push(`- ${synthesisStatus.message}`);
   }
 
-  if (Array.isArray(codexStatus.changedPaths) && codexStatus.changedPaths.length > 0) {
-    lines.push(...codexStatus.changedPaths.map((changedPath) => `- Changed: \`${changedPath}\``));
+  if (Array.isArray(synthesisStatus.changedPaths) && synthesisStatus.changedPaths.length > 0) {
+    lines.push(...synthesisStatus.changedPaths.map((changedPath) => `- Changed: \`${changedPath}\``));
   }
 
-  if (Array.isArray(codexStatus.invalidPaths) && codexStatus.invalidPaths.length > 0) {
-    lines.push(...codexStatus.invalidPaths.map((invalidPath) => `- Rejected out-of-scope change: \`${invalidPath}\``));
+  if (Array.isArray(synthesisStatus.invalidPaths) && synthesisStatus.invalidPaths.length > 0) {
+    lines.push(...synthesisStatus.invalidPaths.map((invalidPath) => `- Rejected out-of-scope change: \`${invalidPath}\``));
   }
 
   lines.push("");
@@ -898,11 +920,12 @@ function writeRunArtifacts(workspaceRoot, config, manifest, reportContent) {
   };
 }
 
-function runCodexSynthesis(workspaceRoot, config, manifest, options = {}) {
+function runAgentSynthesis(workspaceRoot, config, manifest, options = {}) {
   const dryRun = Boolean(options.dryRun);
-  const allowRules = buildCodexAllowRules(config);
+  const allowRules = buildAgentAllowRules(config);
   const startedAt = isoNow();
   const startedAtMs = Date.now();
+  const synthesis = config.synthesis;
 
   if (dryRun) {
     return {
@@ -910,37 +933,63 @@ function runCodexSynthesis(workspaceRoot, config, manifest, options = {}) {
       metrics: {
         durationMs: elapsedMs(startedAtMs),
         finishedAt: isoNow(),
-        model: config.codex.model,
+        command: synthesis.command,
         outputMessagePath: null,
         promptChars: 0,
         promptWords: 0,
-        reasoningEffort: config.codex.reasoningEffort,
+        provider: synthesis.provider,
         startedAt,
         tokenUsage: makeUnavailableTokenUsage()
       },
-      message: "Dry-run: Codex synthesis skipped. Allowed targets were reported only.",
+      message: "Dry-run: Agent synthesis skipped. Allowed targets were reported only.",
       status: "skipped"
     };
   }
 
-  const codexBin = options.codexBin ?? process.env.DOCS_MAINTENANCE_CODEX_BIN ?? "codex";
-  const resolvedCodexBin = codexBin.includes(path.sep) ? codexBin : spawnSync("bash", ["-lc", `command -v ${JSON.stringify(codexBin)}`], { encoding: "utf8" }).stdout.trim();
-
-  if (!resolvedCodexBin) {
-    throw new Error(`Codex binary not found: ${codexBin}`);
+  if (!synthesis.enabled) {
+    return {
+      changedPaths: [],
+      metrics: {
+        command: synthesis.command,
+        durationMs: elapsedMs(startedAtMs),
+        finishedAt: isoNow(),
+        outputMessagePath: null,
+        promptChars: 0,
+        promptWords: 0,
+        provider: synthesis.provider,
+        startedAt,
+        tokenUsage: makeUnavailableTokenUsage()
+      },
+      message: "Agent synthesis disabled by config. Deterministic maintenance completed.",
+      status: "skipped"
+    };
   }
 
   const tempRoot = createTempWorkspace(workspaceRoot, config, allowRules);
   const runJsonRelativePath = path.join(config.maintenanceRoot, "runs", `${manifest.runId}.json`);
-  const prompt = buildCodexPrompt(config, manifest);
+  const prompt = buildSynthesisPrompt(config, manifest);
   const maintenanceRunPath = resolveWorkspacePath(tempRoot, runJsonRelativePath);
-  const outputMessagePath = path.join(os.tmpdir(), `portable-agent-memory-codex-output-${manifest.runId}.txt`);
+  const outputMessagePath = path.join(os.tmpdir(), `portable-agent-memory-synthesis-output-${manifest.runId}.txt`);
+  const command = options.synthesisCommand ?? synthesis.command;
+
+  if (typeof command !== "string" || command.trim() === "") {
+    throw new Error("Synthesis is enabled but no synthesis.command was configured");
+  }
+
+  const replacements = {
+    output: outputMessagePath,
+    prompt,
+    runJson: maintenanceRunPath,
+    workspace: tempRoot
+  };
+  const args = synthesis.args.map((entry) => applyCommandTemplate(entry, replacements));
+  const stdin = synthesis.stdin === "prompt" ? prompt : undefined;
   const baseMetrics = {
-    model: config.codex.model,
+    command,
     outputMessagePath,
     promptChars: prompt.length,
     promptWords: countWords(prompt),
-    reasoningEffort: config.codex.reasoningEffort,
+    provider: synthesis.provider,
     startedAt,
     tokenUsage: makeUnavailableTokenUsage()
   };
@@ -948,27 +997,15 @@ function runCodexSynthesis(workspaceRoot, config, manifest, options = {}) {
   safeWriteFile(maintenanceRunPath, `${JSON.stringify(manifest, null, 2)}\n`);
   const initialSnapshot = snapshotFiles(tempRoot);
 
-  const result = spawnSync(
-    resolvedCodexBin,
-    [
-      "exec",
-      "--skip-git-repo-check",
-      "--full-auto",
-      "--ephemeral",
-      "-m",
-      config.codex.model,
-      "-c",
-      `model_reasoning_effort="${config.codex.reasoningEffort}"`,
-      "-C",
-      tempRoot,
-      "-o",
-      outputMessagePath,
-      prompt
-    ],
-    {
-      encoding: "utf8"
-    }
-  );
+  const result = spawnSync(command, args, {
+    encoding: "utf8",
+    input: stdin,
+    shell: process.platform === "win32"
+  });
+
+  if (result.error) {
+    throw new Error(`Synthesis command failed to start: ${result.error.message}`);
+  }
 
   if (result.status !== 0) {
     return {
@@ -978,14 +1015,14 @@ function runCodexSynthesis(workspaceRoot, config, manifest, options = {}) {
         durationMs: elapsedMs(startedAtMs),
         finishedAt: isoNow()
       },
-      message: `Codex exec failed: ${result.stderr.trim() || result.stdout.trim() || "unknown error"}`,
+      message: `Agent synthesis command failed: ${result.stderr.trim() || result.stdout.trim() || "unknown error"}`,
       status: "failed"
     };
   }
 
   const finalSnapshot = snapshotFiles(tempRoot);
   const changes = diffSnapshots(initialSnapshot, finalSnapshot);
-  const validation = validateCodexChanges(changes, allowRules);
+  const validation = validateAgentChanges(changes, allowRules);
 
   if (validation.invalid.length > 0) {
     return {
@@ -996,7 +1033,7 @@ function runCodexSynthesis(workspaceRoot, config, manifest, options = {}) {
         durationMs: elapsedMs(startedAtMs),
         finishedAt: isoNow()
       },
-      message: "Codex produced out-of-scope changes. Copy-back was aborted.",
+      message: "Agent synthesis produced out-of-scope changes. Copy-back was aborted.",
       status: "rejected"
     };
   }
@@ -1010,7 +1047,7 @@ function runCodexSynthesis(workspaceRoot, config, manifest, options = {}) {
       durationMs: elapsedMs(startedAtMs),
       finishedAt: isoNow()
     },
-    message: "Codex synthesis completed within the allowed write scope.",
+    message: "Agent synthesis completed within the allowed write scope.",
     status: "applied"
   };
 }
@@ -1025,8 +1062,8 @@ function runMaintenance(workspaceRoot, config, command, options = {}) {
   const dryRun = Boolean(options.dryRun);
   let rotation = [];
   let archiveIndexing = { summaries: [], writes: [] };
-  let codexStatus = {
-    message: "Codex synthesis was not requested.",
+  let synthesisStatus = {
+    message: "Agent synthesis was not requested.",
     status: "skipped"
   };
 
@@ -1040,21 +1077,21 @@ function runMaintenance(workspaceRoot, config, command, options = {}) {
 
   const manifest = buildRunManifest(workspaceRoot, config, rotation, archiveIndexing, options);
 
-  if (command === "codex" || command === "maintain") {
-    codexStatus = runCodexSynthesis(workspaceRoot, config, manifest, options);
+  if (command === "synthesis" || command === "maintain") {
+    synthesisStatus = runAgentSynthesis(workspaceRoot, config, manifest, options);
   }
 
   manifest.performance = {
-    codex: codexStatus.metrics ?? null,
+    synthesis: synthesisStatus.metrics ?? null,
     durationMs: elapsedMs(startedAtMs),
     finishedAt: isoNow(),
     startedAt
   };
 
-  const reportContent = renderRunReport(manifest, codexStatus, dryRun);
+  const reportContent = renderRunReport(manifest, synthesisStatus, dryRun);
   const result = {
     archiveIndexing,
-    codexStatus,
+    synthesisStatus,
     dryRun,
     manifest,
     rotation
@@ -1091,9 +1128,9 @@ export {
   renderRunReport,
   rotateLogFile,
   rotateManagedLogs,
-  runCodexSynthesis,
+  runAgentSynthesis,
   runMaintenance,
-  validateCodexChanges
+  validateAgentChanges
 };
 
 function main() {
@@ -1101,7 +1138,7 @@ function main() {
   const { command, dryRun, json } = parseCliArgs(process.argv.slice(2));
   const config = loadConfig();
 
-  if (!["rotate", "index", "codex", "maintain"].includes(command)) {
+  if (!["rotate", "index", "synthesis", "maintain"].includes(command)) {
     throw new Error(`Unsupported memory-maintenance command: ${command}`);
   }
 
