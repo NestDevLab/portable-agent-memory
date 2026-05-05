@@ -1,0 +1,45 @@
+{
+  "retentionDays": 90,
+  "archiveRoot": "memory/archive",
+  "summariesRoot": "memory/summaries",
+  "maintenanceRoot": "memory/maintenance",
+  "codex": {
+    "model": "gpt-5.4",
+    "reasoningEffort": "medium"
+  },
+  "workspace": {
+    "name": "Example Memory Workspace",
+    "description": "Markdown-based memory workspace maintained by an AI agent.",
+    "indexPath": "memory/index.md",
+    "llmWikiPath": "memory/agent-memory/llm-wiki.md",
+    "policyPaths": [
+      "AGENTS.md",
+      "CLAUDE.md",
+      "memory/agent-memory/pam.md"
+    ]
+  },
+  "managedLogs": [
+    {
+      "source": "memory/conversation-log.md",
+      "archiveKey": "conversation-log",
+      "activeEntryLimit": 80
+    },
+    {
+      "source": "memory/knowledge-log.md",
+      "archiveKey": "knowledge-log",
+      "activeEntryLimit": 120
+    }
+  ],
+  "readContextPaths": [
+    "AGENTS.md",
+    "CLAUDE.md",
+    "README.md",
+    "memory"
+  ],
+  "protectedPaths": [
+    "AGENTS.md",
+    "CLAUDE.md",
+    "memory/agent-memory",
+    "memory/sources"
+  ]
+}

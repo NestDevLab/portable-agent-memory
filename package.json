@@ -1,0 +1,25 @@
+{
+  "name": "portable-agent-memory",
+  "version": "0.1.0",
+  "private": false,
+  "description": "Markdown-first portable memory maintenance for AI agents.",
+  "type": "module",
+  "scripts": {
+    "memory:maintain": "node tools/memory-maintenance.mjs maintain",
+    "memory:maintain:dry-run": "node tools/memory-maintenance.mjs maintain --dry-run",
+    "memory:rotate": "node tools/memory-maintenance.mjs rotate",
+    "memory:index": "node tools/memory-maintenance.mjs index",
+    "memory:codex": "node tools/memory-maintenance.mjs codex",
+    "memory:cron:install": "bash tools/install-memory-maintenance-cron.sh",
+    "test": "node --test tools/test-memory-maintenance.mjs"
+  },
+  "keywords": [
+    "ai",
+    "agent",
+    "memory",
+    "markdown",
+    "llm",
+    "wiki"
+  ],
+  "license": "MIT"
+}
