@@ -5,8 +5,8 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
 RUNNER="$ROOT_DIR/tools/run-memory-maintenance-nightly.sh"
 LOG_PATH="$ROOT_DIR/memory/maintenance/nightly-cron.log"
-MARKER_START="# BEGIN portable-agent maintenance"
-MARKER_END="# END portable-agent maintenance"
+MARKER_START="# BEGIN portable-agent-memory maintenance"
+MARKER_END="# END portable-agent-memory maintenance"
 
 if [[ ! -x "$RUNNER" ]]; then
   chmod +x "$RUNNER"
@@ -31,4 +31,4 @@ awk -v start="$MARKER_START" -v end="$MARKER_END" '
 } >>"$next_crontab"
 
 crontab "$next_crontab"
-printf 'Installed portable-agent maintenance cron for %s\n' "$ROOT_DIR"
+printf 'Installed portable-agent-memory maintenance cron for %s\n' "$ROOT_DIR"

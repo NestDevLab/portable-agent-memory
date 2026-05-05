@@ -1,8 +1,8 @@
 {
-  "name": "portable-agent",
+  "name": "portable-agent-memory",
   "version": "0.1.0",
   "private": false,
-  "description": "Portable markdown memory, wiki, and maintenance toolkit for AI agents.",
+  "description": "Markdown-first portable memory, wiki, and maintenance toolkit for AI agents.",
   "type": "module",
   "scripts": {
     "memory:maintain": "node tools/memory-maintenance.mjs maintain",
