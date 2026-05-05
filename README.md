@@ -35,8 +35,15 @@ portable contract plus a starter implementation that works with plain files.
 
 The important pieces are:
 
+- [memory/pam.version.json](memory/pam.version.json): explicit PAM memory format
+  and schema metadata for migration detection.
+- [memory/agent-memory/pam-runtime.md](memory/agent-memory/pam-runtime.md): the
+  compact graph-first runtime guide for everyday agent memory lookup.
+- [memory/graph/](memory/graph): AI-first JSONL graph memory. Agents can read it
+  directly without Node, npm, a database, or embeddings.
 - [memory/agent-memory/pam.md](memory/agent-memory/pam.md): the Portable Agent
-  Memory constitution. This is the protocol agents should follow.
+  Memory constitution. This is the setup/protocol reference agents should
+  follow when changing or auditing PAM itself.
 - [memory/agent-memory/llm-wiki.md](memory/agent-memory/llm-wiki.md): the
   persistent wiki pattern for turning raw material into curated pages.
 - [AGENT_BOOTSTRAP.md](AGENT_BOOTSTRAP.md): copy/paste instructions you can give
@@ -143,6 +150,11 @@ Commands:
 
 ```bash
 npm test
+npm run memory:graph:validate
+npm run memory:graph:query -- --q PAM --json
+npm run memory:detect -- --json
+npm run benchmark:current
+npm run benchmark:compare -- --before benchmarks/baselines/pam-0.1.0-markdown.json --after benchmarks/baselines/pam-0.2.0-graph-v1.json
 npm run memory:maintain:dry-run
 npm run memory:maintain
 npm run memory:rotate
@@ -158,6 +170,52 @@ first, then runs optional bounded synthesis only when
 
 The synthesis command is configurable. It can point to Codex, Claude CLI,
 OpenClaw, Ollama, a local script, or no agent at all.
+
+## Graph Memory V1
+
+PAM now includes a compact JSONL graph layer. This is the default read path for
+everyday memory questions:
+
+1. Read `memory/pam.version.json`.
+2. Read `memory/graph/catalog.json`.
+3. Search `memory/graph/aliases.jsonl` and `memory/graph/nodes.jsonl`.
+4. Follow relevant entries in `memory/graph/edges.jsonl`.
+5. Open long markdown source files only when the graph digest is insufficient.
+
+The optional `memory:graph:*` scripts validate and query this data, but agents
+can also use plain text search or any JSONL parser. Node is not required to read
+or manually update the memory.
+
+## Benchmarks
+
+The benchmark tool records aggregate public metrics only: file counts, bytes,
+word counts, token proxies, command durations, and read-volume estimates. It
+does not store raw source text, private paths, prompts, tokens, cookies, or
+credentials.
+
+Committed baselines live under `benchmarks/baselines/` so markdown-only and
+graph-v1 retrieval can be compared over time.
+
+Current public baseline comparison:
+
+| Scenario | 0.1.0 markdown token proxy | 0.2.0 graph-v1 token proxy | Change |
+| --- | ---: | ---: | ---: |
+| Generic memory query | 6655 | 1370 | -79.41% |
+
+Benchmark files:
+
+- [pam-0.1.0-markdown.json](benchmarks/baselines/pam-0.1.0-markdown.json)
+- [pam-0.2.0-graph-v1.json](benchmarks/baselines/pam-0.2.0-graph-v1.json)
+
+Reproduce the comparison:
+
+```bash
+npm run benchmark:compare -- --before benchmarks/baselines/pam-0.1.0-markdown.json --after benchmarks/baselines/pam-0.2.0-graph-v1.json
+```
+
+The benchmark is a read-volume proxy, not a model billing report. It estimates
+the amount of text an agent needs to inspect for the same generic memory lookup
+path before and after graph-v1.
 
 ## Maintenance Safety Model
 

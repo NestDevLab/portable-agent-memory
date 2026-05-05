@@ -35,6 +35,20 @@ After setup, add a short entry explaining what was created, what assumptions
 were made, and what future agents should do next.
 ```
 
+## Everyday Runtime Prompt
+
+```text
+Use Portable Agent Memory for this repository.
+
+For normal memory lookup, do not start by reading the full PAM contract or
+llm-wiki reference. First read memory/pam.version.json, memory/graph/catalog.json,
+and the relevant JSONL records in memory/graph/.
+
+Open long markdown source files only when the graph digest and source pointer
+are insufficient. Node/npm graph tools are optional; direct JSONL reading is
+valid.
+```
+
 ## Existing Project Audit Prompt
 
 ```text

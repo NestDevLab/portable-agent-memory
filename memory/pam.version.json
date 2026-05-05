@@ -1,0 +1,11 @@
+{
+  "pamVersion": "0.2.0",
+  "memoryFormat": "graph-v1",
+  "graphSchemaVersion": "pam-graph-v1",
+  "features": {
+    "graphJsonl": true,
+    "markdownLogs": true,
+    "versionAwareMigration": true
+  },
+  "updated": "2026-05-05"
+}

@@ -1,0 +1,11 @@
+{"f":"project:pam","r":"has-doc","t":"doc:pam-contract","st":"confirmed","c":"high","u":"2026-05-05","src":"README.md"}
+{"f":"project:pam","r":"has-doc","t":"doc:llm-wiki","st":"confirmed","c":"high","u":"2026-05-05","src":"README.md"}
+{"f":"project:pam","r":"has-runtime","t":"doc:runtime","st":"confirmed","c":"high","u":"2026-05-05","src":"memory/index.md"}
+{"f":"project:pam","r":"uses-format","t":"format:graph-v1","st":"confirmed","c":"high","u":"2026-05-05","src":"memory/pam.version.json"}
+{"f":"project:pam","r":"has-tool","t":"tool:maintenance","st":"confirmed","c":"high","u":"2026-05-05","src":"package.json"}
+{"f":"project:pam","r":"has-tool","t":"tool:graph","st":"confirmed","c":"high","u":"2026-05-05","src":"package.json"}
+{"f":"project:pam","r":"has-tool","t":"tool:benchmark","st":"confirmed","c":"high","u":"2026-05-05","src":"package.json"}
+{"f":"project:pam","r":"keeps-compatible-log","t":"log:conversation","st":"confirmed","c":"high","u":"2026-05-05","src":"memory/index.md"}
+{"f":"project:pam","r":"keeps-compatible-log","t":"log:knowledge","st":"confirmed","c":"high","u":"2026-05-05","src":"memory/index.md"}
+{"f":"format:graph-v1","r":"migrates-from","t":"migration:markdown-to-graph-v1","st":"confirmed","c":"high","u":"2026-05-05","src":"migrations/markdown-v0-to-graph-v1.md"}
+{"f":"doc:runtime","r":"prefers","t":"format:graph-v1","st":"confirmed","c":"high","u":"2026-05-05","src":"memory/agent-memory/pam-runtime.md"}

@@ -3,6 +3,12 @@
   "archiveRoot": "memory/archive",
   "summariesRoot": "memory/summaries",
   "maintenanceRoot": "memory/maintenance",
+  "graph": {
+    "enabled": true,
+    "root": "memory/graph",
+    "versionPath": "memory/pam.version.json",
+    "catalogPath": "memory/graph/catalog.json"
+  },
   "synthesis": {
     "enabled": false,
     "provider": "none",
@@ -48,6 +54,7 @@
     "name": "Example Memory Workspace",
     "description": "Markdown-based memory workspace maintained by an AI agent.",
     "indexPath": "memory/index.md",
+    "runtimePath": "memory/agent-memory/pam-runtime.md",
     "llmWikiPath": "memory/agent-memory/llm-wiki.md",
     "policyPaths": [
       "AGENTS.md",
@@ -71,7 +78,12 @@
     "AGENTS.md",
     "CLAUDE.md",
     "README.md",
-    "memory"
+    "memory/index.md",
+    "memory/pam.version.json",
+    "memory/graph",
+    "memory/agent-memory/pam-runtime.md",
+    "memory/conversation-log.md",
+    "memory/knowledge-log.md"
   ],
   "protectedPaths": [
     "AGENTS.md",

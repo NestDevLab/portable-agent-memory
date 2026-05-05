@@ -612,14 +612,16 @@ function buildAgentAllowRules(config) {
     : "memory/index.md";
   const exactPaths = new Set([
     indexPath,
+    config.graph?.catalogPath,
     path.join(config.archiveRoot, "index.md"),
     ...config.managedLogs.map((logConfig) => path.join(config.archiveRoot, logConfig.archiveKey, "index.md"))
-  ].map(toPosixPath));
+  ].filter(Boolean).map(toPosixPath));
 
   const prefixPaths = [
+    config.graph?.root ? `${toPosixPath(config.graph.root)}/` : null,
     `${toPosixPath(config.summariesRoot)}/`,
     `${toPosixPath(config.maintenanceRoot)}/`
-  ];
+  ].filter(Boolean);
 
   return {
     exactPaths,
@@ -645,6 +647,7 @@ function buildSynthesisPrompt(config, manifest) {
   const workspaceName = workspace.name ?? "Markdown memory workspace";
   const workspaceDescription = workspace.description ?? "A markdown knowledge base maintained by an AI agent.";
   const indexPath = workspace.indexPath ?? "memory/index.md";
+  const runtimePath = workspace.runtimePath ?? "memory/agent-memory/pam-runtime.md";
   const llmWikiPath = workspace.llmWikiPath ?? "memory/agent-memory/llm-wiki.md";
   const policyPaths = Array.isArray(workspace.policyPaths) ? workspace.policyPaths : [];
   const policySection =
@@ -685,10 +688,12 @@ function buildSynthesisPrompt(config, manifest) {
     "",
     "Required tasks:",
     `1. Update \`${indexPath}\` as the top-level wiki-style entrypoint for the memory workspace if it is in the allowed write targets.`,
-    "2. Update any relevant archive index pages only if the rotated/archive state changed.",
-    `3. Create or refresh quarter summaries under \`${config.summariesRoot}/\` where useful, especially for the current quarter or any quarter touched by rotated entries.`,
-    "4. Keep wording concise, factual, and consistent with the workspace documentation style.",
-    "5. If no semantic updates are needed, leave files unchanged.",
+    `2. Keep graph memory under \`${config.graph?.root ?? "memory/graph"}\` compact, source-traced, and useful for graph-first retrieval.`,
+    `3. Use \`${runtimePath}\` as the compact runtime contract; do not require everyday agents to read full protocol docs unless needed.`,
+    "4. Update any relevant archive index pages only if the rotated/archive state changed.",
+    `5. Create or refresh quarter summaries under \`${config.summariesRoot}/\` where useful, especially for the current quarter or any quarter touched by rotated entries.`,
+    "6. Keep wording concise, factual, and consistent with the workspace documentation style.",
+    "7. If no semantic updates are needed, leave files unchanged.",
     "",
     "Never rewrite archived entries. Never edit policy files, raw source files, or any files outside the allowlist.",
     "",
@@ -698,8 +703,14 @@ function buildSynthesisPrompt(config, manifest) {
 
 function createTempWorkspace(workspaceRoot, config, allowRules) {
   const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "portable-agent-memory-maintenance-"));
+  const copiedPaths = new Set();
 
-  for (const relativePath of config.readContextPaths) {
+  for (const relativePath of [...config.readContextPaths, ...config.protectedPaths]) {
+    if (copiedPaths.has(relativePath)) {
+      continue;
+    }
+    copiedPaths.add(relativePath);
+
     const sourcePath = resolveWorkspacePath(workspaceRoot, relativePath);
     if (!fileExists(sourcePath)) {
       continue;
@@ -832,6 +843,7 @@ function buildRunManifest(workspaceRoot, config, rotation, archiveIndexing, opti
     summaryTargets: [
       `${toPosixPath(config.summariesRoot)}/${getQuarterInfo(now).year}/${getQuarterInfo(now).key}.md`
     ],
+    graph: config.graph ?? null,
     allowedWritePaths,
     protectedPaths
   };

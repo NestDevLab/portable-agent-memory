@@ -1,0 +1,25 @@
+{
+  "schemaVersion": "pam-graph-v1",
+  "generatedAt": "2026-05-05T17:08:17.820Z",
+  "nodeCount": 11,
+  "edgeCount": 11,
+  "aliasCount": 10,
+  "sourceFiles": [
+    "memory/graph/nodes.jsonl",
+    "memory/graph/edges.jsonl",
+    "memory/graph/aliases.jsonl"
+  ],
+  "entrypoints": {
+    "runtime": "memory/agent-memory/pam-runtime.md",
+    "version": "memory/pam.version.json",
+    "index": "memory/index.md"
+  },
+  "budgets": {
+    "maxNodeDigestChars": 180
+  },
+  "health": {
+    "status": "valid",
+    "warnings": [],
+    "errors": []
+  }
+}

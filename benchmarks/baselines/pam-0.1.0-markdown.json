@@ -1,0 +1,150 @@
+{
+  "benchmarkVersion": 1,
+  "generatedAt": "2026-05-05T00:00:00.000Z",
+  "repository": "portable-agent-memory",
+  "profile": "markdown-v0",
+  "sourceRef": "HEAD before graph-v1 migration",
+  "privacy": {
+    "aggregateOnly": true,
+    "rawTextIncluded": false,
+    "privatePathsIncluded": false
+  },
+  "scenarios": {
+    "setupAuditMarkdown": {
+      "fileCount": 4,
+      "bytes": 37597,
+      "words": 5502,
+      "tokenProxy": 9401,
+      "files": [
+        {
+          "path": "AGENT_BOOTSTRAP.md",
+          "bytes": 3238,
+          "words": 496,
+          "tokenProxy": 810
+        },
+        {
+          "path": "README.md",
+          "bytes": 8857,
+          "words": 1197,
+          "tokenProxy": 2215
+        },
+        {
+          "path": "memory/agent-memory/pam.md",
+          "bytes": 13518,
+          "words": 1850,
+          "tokenProxy": 3380
+        },
+        {
+          "path": "memory/agent-memory/llm-wiki.md",
+          "bytes": 11984,
+          "words": 1959,
+          "tokenProxy": 2996
+        }
+      ]
+    },
+    "genericMemoryQueryMarkdown": {
+      "fileCount": 5,
+      "bytes": 26615,
+      "words": 3948,
+      "tokenProxy": 6655,
+      "files": [
+        {
+          "path": "memory/index.md",
+          "bytes": 588,
+          "words": 60,
+          "tokenProxy": 147
+        },
+        {
+          "path": "memory/conversation-log.md",
+          "bytes": 295,
+          "words": 45,
+          "tokenProxy": 74
+        },
+        {
+          "path": "memory/knowledge-log.md",
+          "bytes": 230,
+          "words": 34,
+          "tokenProxy": 58
+        },
+        {
+          "path": "memory/agent-memory/pam.md",
+          "bytes": 13518,
+          "words": 1850,
+          "tokenProxy": 3380
+        },
+        {
+          "path": "memory/agent-memory/llm-wiki.md",
+          "bytes": 11984,
+          "words": 1959,
+          "tokenProxy": 2996
+        }
+      ]
+    },
+    "maintenanceDryRun": {
+      "command": "node tools/memory-maintenance.mjs maintain --dry-run --json",
+      "durationMs": null,
+      "status": null,
+      "stdoutBytes": null,
+      "stderrBytes": null,
+      "readVolume": {
+        "fileCount": 3,
+        "bytes": 2268,
+        "words": 209,
+        "tokenProxy": 568,
+        "files": [
+          {
+            "path": "tools/memory-maintenance.config.json",
+            "bytes": 1743,
+            "words": 130,
+            "tokenProxy": 436
+          },
+          {
+            "path": "memory/conversation-log.md",
+            "bytes": 295,
+            "words": 45,
+            "tokenProxy": 74
+          },
+          {
+            "path": "memory/knowledge-log.md",
+            "bytes": 230,
+            "words": 34,
+            "tokenProxy": 58
+          }
+        ]
+      }
+    },
+    "searchPath": {
+      "command": "read README.md, memory/index.md, memory/agent-memory/pam.md and search for a generic term",
+      "durationMs": null,
+      "status": null,
+      "stdoutBytes": null,
+      "stderrBytes": null,
+      "readVolume": {
+        "fileCount": 3,
+        "bytes": 22963,
+        "words": 3107,
+        "tokenProxy": 5742,
+        "files": [
+          {
+            "path": "README.md",
+            "bytes": 8857,
+            "words": 1197,
+            "tokenProxy": 2215
+          },
+          {
+            "path": "memory/index.md",
+            "bytes": 588,
+            "words": 60,
+            "tokenProxy": 147
+          },
+          {
+            "path": "memory/agent-memory/pam.md",
+            "bytes": 13518,
+            "words": 1850,
+            "tokenProxy": 3380
+          }
+        ]
+      }
+    }
+  }
+}

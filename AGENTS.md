@@ -16,8 +16,12 @@ memory.
 
 ## Memory Model
 
-Use `memory/agent-memory/pam.md` as the durable memory contract.
-Use `memory/agent-memory/llm-wiki.md` as the persistent wiki pattern.
+Use `memory/agent-memory/pam-runtime.md` and `memory/graph/` first for everyday
+memory lookup.
+
+Use `memory/agent-memory/pam.md` as the durable memory contract for setup,
+audits, migrations, and protocol changes.
+Use `memory/agent-memory/llm-wiki.md` as the persistent wiki pattern reference.
 
 The maintenance CLI is a tool that implements part of that contract; it is not
 the entire memory system.
