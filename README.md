@@ -1,7 +1,7 @@
-# Portable Agent Memory
+# Portable Agent
 
-Portable Agent Memory is a small, markdown-first maintenance toolkit for AI
-agent memory.
+Portable Agent is a small, markdown-first memory, wiki, and maintenance toolkit
+for AI agents.
 
 It gives a repository a predictable way to preserve working memory over time:
 
@@ -17,7 +17,7 @@ write markdown.
 
 ## What This Is
 
-This repository contains:
+This repository keeps the pieces together:
 
 - `memory/agent-memory/pam.md` - a portable memory constitution;
 - `memory/agent-memory/llm-wiki.md` - the persistent wiki pattern;

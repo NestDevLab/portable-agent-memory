@@ -19,7 +19,7 @@ import {
 const FIXED_NOW = new Date("2026-04-23T00:00:00Z");
 
 function makeTempWorkspace() {
-  const workspaceRoot = fs.mkdtempSync(path.join(os.tmpdir(), "portable-agent-memory-test-"));
+  const workspaceRoot = fs.mkdtempSync(path.join(os.tmpdir(), "portable-agent-test-"));
   fs.mkdirSync(path.join(workspaceRoot, "memory"), { recursive: true });
   fs.mkdirSync(path.join(workspaceRoot, "memory", "agent-memory"), { recursive: true });
   fs.mkdirSync(path.join(workspaceRoot, "memory", "sources"), { recursive: true });

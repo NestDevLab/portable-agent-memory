@@ -570,13 +570,13 @@ A scheduler may periodically invoke an AI agent with this document.
 Example concept:
 
 ```bash
-codex exec "Read portable-agent-memory.md and perform the scheduled memory maintenance routine."
+codex exec "Read memory/agent-memory/pam.md and perform the scheduled memory maintenance routine."
 ```
 
 Or:
 
 ```bash
-openclaw run --agent example-agent --instruction ./portable-agent-memory.md --task "Perform scheduled memory maintenance routine"
+openclaw run --agent example-agent --instruction ./memory/agent-memory/pam.md --task "Perform scheduled memory maintenance routine"
 ```
 
 The exact command depends on the runtime.

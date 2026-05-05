@@ -684,7 +684,7 @@ function buildCodexPrompt(config, manifest) {
 }
 
 function createTempWorkspace(workspaceRoot, config, allowRules) {
-  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "portable-agent-memory-maintenance-"));
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "portable-agent-maintenance-"));
 
   for (const relativePath of config.readContextPaths) {
     const sourcePath = resolveWorkspacePath(workspaceRoot, relativePath);
@@ -934,7 +934,7 @@ function runCodexSynthesis(workspaceRoot, config, manifest, options = {}) {
   const runJsonRelativePath = path.join(config.maintenanceRoot, "runs", `${manifest.runId}.json`);
   const prompt = buildCodexPrompt(config, manifest);
   const maintenanceRunPath = resolveWorkspacePath(tempRoot, runJsonRelativePath);
-  const outputMessagePath = path.join(os.tmpdir(), `portable-agent-memory-codex-output-${manifest.runId}.txt`);
+  const outputMessagePath = path.join(os.tmpdir(), `portable-agent-codex-output-${manifest.runId}.txt`);
   const baseMetrics = {
     model: config.codex.model,
     outputMessagePath,
