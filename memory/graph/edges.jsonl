@@ -9,3 +9,5 @@
 {"f":"project:pam","r":"keeps-compatible-log","t":"log:knowledge","st":"confirmed","c":"high","u":"2026-05-05","src":"memory/index.md"}
 {"f":"format:graph-v1","r":"migrates-from","t":"migration:markdown-to-graph-v1","st":"confirmed","c":"high","u":"2026-05-05","src":"migrations/markdown-v0-to-graph-v1.md"}
 {"f":"doc:runtime","r":"prefers","t":"format:graph-v1","st":"confirmed","c":"high","u":"2026-05-05","src":"memory/agent-memory/pam-runtime.md"}
+{"f":"project:pam","r":"has-principle","t":"principle:agent-facing-runbooks","st":"confirmed","c":"high","u":"2026-05-07","src":"memory/agent-memory/pam.md"}
+{"f":"doc:pam-contract","r":"defines-principle","t":"principle:agent-facing-runbooks","st":"confirmed","c":"high","u":"2026-05-07","src":"memory/agent-memory/pam.md"}

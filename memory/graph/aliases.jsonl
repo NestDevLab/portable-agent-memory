@@ -8,3 +8,5 @@
 {"a":"graph cli","id":"tool:graph"}
 {"a":"benchmark cli","id":"tool:benchmark"}
 {"a":"markdown migration","id":"migration:markdown-to-graph-v1"}
+{"a":"agent-facing runbooks","id":"principle:agent-facing-runbooks"}
+{"a":"runbook quality gate","id":"principle:agent-facing-runbooks"}

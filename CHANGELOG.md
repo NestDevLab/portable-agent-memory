@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+- Added an explicit PAM principle that agent-facing runbooks and skills should
+  be written as AI-agent control surfaces, with MUST/DO NOT rules, final
+  quality gates, wrong/right examples, and mechanically checkable completion
+  criteria.
+
 ## 0.2.0 - 2026-05-05
 
 PAM 0.2.0 changes the default runtime shape from "read markdown docs first" to

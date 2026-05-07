@@ -401,6 +401,26 @@ Shareable artifacts should:
 * avoid secrets, credentials, cookies, private keys, and raw sensitive content
 * separate confirmed facts from assumptions
 
+Agent-facing artifact rule:
+
+* Treat skills and runbooks as agent control surfaces, not only human-readable
+  documentation.
+* Write critical behavior with explicit `MUST`, `DO NOT`, `BLOCKED`,
+  `PARTIAL`, and `COMPLETE` language when those states matter.
+* Put final quality gates near the output or completion section so an agent can
+  check them immediately before answering.
+* Include compact wrong/right examples for failure patterns that a model is
+  likely to compress, skip, or misread.
+* Prefer mechanically checkable completion criteria over vague guidance.
+
+Example:
+
+```text
+Weak: Include useful context for each ticket.
+Strong: The final recap is not ready if any ticket key appears without a title
+or one-sentence description.
+```
+
 ### 8.1 Skill template
 
 Use a skill for a reusable capability that an AI agent can invoke when a task
@@ -472,6 +492,16 @@ Numbered steps to perform the work.
 ## Verification
 
 Checks that prove the procedure succeeded.
+
+Include a final quality gate when the procedure produces a report, answer,
+state transition, or decision. The gate should be written for an AI agent under
+context pressure, not only for a human reviewer. Use concrete checks such as:
+
+* no required source is missing;
+* every ID has a title or description;
+* every `PARTIAL` or `BLOCKED` item has a blocker and next action;
+* the final message does not claim writes or state changes that were not
+  performed.
 
 ## Failure modes
 

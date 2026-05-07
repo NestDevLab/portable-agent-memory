@@ -29,6 +29,22 @@ large markdown documents by default.
 - Read `memory/agent-memory/llm-wiki.md` for wiki-pattern questions.
 - Read markdown logs only for chronology or details missing from graph records.
 
+## Agent-Facing Runbooks
+
+PAM runbooks are primarily for future AI agents. They should shape behavior,
+not only explain a process.
+
+When creating or updating a runbook:
+
+- Use explicit `MUST` / `DO NOT` rules for critical behavior.
+- Add final quality gates near the output or completion section.
+- Include compact wrong/right examples for recurring failure patterns.
+- Prefer mechanically checkable completion criteria over vague guidance.
+
+Example: write "the final recap is not ready if any ticket key appears without
+a title or one-sentence description" instead of only "include useful ticket
+context."
+
 ## Updating Memory
 
 For durable AI memory, add or update graph records first, then keep markdown
