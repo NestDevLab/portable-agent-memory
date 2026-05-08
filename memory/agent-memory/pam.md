@@ -189,8 +189,59 @@ scheduler:
 3. Treat the required capabilities as mandatory outcomes.
 4. Choose the simplest available implementation that satisfies the contract.
 5. Before answering memory-related questions, run the retrieval protocol.
+   If the environment is OpenClaw-like, read `pam-openclaw.md` and map PAM
+   concepts to existing runtime/project memory before implementing new
+   structures.
 6. During scheduled maintenance, run the maintenance routine and produce a short report.
 7. If the current implementation becomes too rigid, obsolete, or inefficient, propose a migration without breaking the core contract.
+
+---
+
+
+## 3.1 Installation acceptance criteria
+
+When an agent installs or adapts PAM in a repository, it MUST verify the setup
+before claiming completion.
+
+Required criteria:
+
+1. Existing project memory and raw sources were inspected before choosing a layout.
+2. A PAM read path exists.
+3. A searchable index exists.
+4. The local agent instruction file was updated so future agents know how to use PAM.
+5. Important memory entries preserve source traceability.
+6. Safety boundaries are documented: no secrets, credentials, cookies, private keys, or unnecessary raw private communications.
+7. Project-specific conventions were preserved rather than overwritten.
+8. Validation was run when tooling exists, or the absence of tooling was stated.
+9. The final response reports every criterion as `PASS`, `PARTIAL`, `DEFERRED`, or `BLOCKED` with evidence.
+
+Use colored status markers in human-facing reports:
+
+- 🟢 `PASS` — complete and verified.
+- 🟡 `PARTIAL` — partly complete; explain the gap.
+- 🔵 `DEFERRED` — intentionally postponed or declined by the user; include the manual path.
+- 🔴 `BLOCKED` — cannot proceed safely; include blocker and next action.
+- ⚪ `N/A` — not applicable in this environment.
+
+If any criterion is `PARTIAL` or `BLOCKED`, the agent MUST NOT claim PAM is fully
+integrated. It must name the blocker and the safest next action.
+
+Wrong final response:
+
+```text
+PAM is installed.
+```
+
+Right final response:
+
+```text
+PAM integrated: yes
+
+Acceptance criteria:
+1. 🟢 PASS — inspected README.md, docs/, and existing memory/.
+2. 🟢 PASS — created memory/pam.version.json and memory/agent-memory/pam-runtime.md.
+...
+```
 
 ---
 

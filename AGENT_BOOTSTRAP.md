@@ -15,6 +15,11 @@ Read memory/agent-memory/pam.md and memory/agent-memory/llm-wiki.md if present.
 If they are missing, create equivalent files from the Portable Agent Memory
 project.
 
+If this repository is an OpenClaw workspace or contains OpenClaw-style memory
+files such as MEMORY.md, memory/**/*.md, memory-wiki files, or OpenClaw-specific
+agent instructions, also read memory/agent-memory/pam-openclaw.md. Map PAM
+concepts onto existing OpenClaw/project memory before creating new PAM files.
+
 Inspect the repository first. Then create the smallest useful durable memory
 structure for this project.
 
@@ -25,6 +30,9 @@ Required outcomes:
 - a place for raw sources or references;
 - instructions that tell future agents how to read, update, and maintain memory.
 
+Also update the local agent instruction file, such as AGENTS.md, CLAUDE.md,
+GEMINI.md, or an equivalent policy file, with the PAM read/update path.
+
 Do not add unnecessary infrastructure. Do not add a scheduler, vector search,
 SQLite, MCP, or a large wiki unless this repository actually needs it.
 
@@ -33,6 +41,19 @@ private communications.
 
 After setup, add a short entry explaining what was created, what assumptions
 were made, and what future agents should do next.
+
+Before finishing, enforce the PAM installation acceptance criteria:
+1. inspected existing memory/raw sources;
+2. PAM read path exists;
+3. searchable index exists;
+4. local agent instructions were updated;
+5. source traceability is preserved;
+6. safety boundaries are documented;
+7. project-specific conventions were preserved;
+8. validation was run when tooling exists;
+9. final response reports every criterion with colored status markers: 🟢 PASS, 🟡 PARTIAL, 🔵 DEFERRED, 🔴 BLOCKED, or ⚪ N/A.
+
+Do not claim PAM is fully integrated unless every required criterion passes or a non-required criterion is explicitly deferred/opted out.
 ```
 
 ## Everyday Runtime Prompt
@@ -43,6 +64,10 @@ Use Portable Agent Memory for this repository.
 For normal memory lookup, do not start by reading the full PAM contract or
 llm-wiki reference. First read memory/pam.version.json, memory/graph/catalog.json,
 and the relevant JSONL records in memory/graph/.
+
+If memory/agent-memory/pam-openclaw.md exists, read it before proposing changes
+to `MEMORY.md`, OpenClaw memory corpus files, wiki pages, or any
+OpenClaw/project-owned memory source.
 
 Open long markdown source files only when the graph digest and source pointer
 are insufficient. Node/npm graph tools are optional; direct JSONL reading is
@@ -58,15 +83,19 @@ Read the repository instructions and inspect existing documentation, logs,
 notes, and generated summaries.
 
 Report:
+- whether the repository has OpenClaw-native memory, local workspace conventions,
+  missing PAM pieces, or conflicts;
 - what already acts as durable memory;
 - what is missing;
 - what is duplicated or stale;
 - where raw sources should live;
 - what future agents should read first;
+- whether local agent instructions already point to PAM;
 - whether a maintenance tool is useful yet.
 
 Then propose the smallest safe change set to make the repository PAM-compatible.
-Do not modify files until the plan is clear.
+Do not modify files until the plan is clear. Include the installation acceptance
+criteria that must be satisfied before calling the setup complete.
 ```
 
 ## Maintenance Setup Prompt

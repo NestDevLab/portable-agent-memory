@@ -44,6 +44,9 @@ The important pieces are:
 - [memory/agent-memory/pam.md](memory/agent-memory/pam.md): the Portable Agent
   Memory constitution. This is the setup/protocol reference agents should
   follow when changing or auditing PAM itself.
+- [memory/agent-memory/pam-openclaw.md](memory/agent-memory/pam-openclaw.md):
+  specialization guide for applying PAM inside OpenClaw workspaces without
+  replacing OpenClaw-native memory.
 - [memory/agent-memory/llm-wiki.md](memory/agent-memory/llm-wiki.md): the
   persistent wiki pattern for turning raw material into curated pages.
 - [AGENT_BOOTSTRAP.md](AGENT_BOOTSTRAP.md): copy/paste instructions you can give
@@ -93,12 +96,31 @@ Do not assume this repo already follows the examples.
 Inspect the project first, then create the smallest useful memory layout.
 Keep raw sources preserved, create a searchable index, add a conversation log,
 add a knowledge log, and write clear instructions for future agents.
+Update the project's agent instruction file, such as AGENTS.md, CLAUDE.md,
+GEMINI.md, or an equivalent local policy file, so future agents know the PAM
+read path.
 Do not store secrets, credentials, private tokens, cookies, or unnecessary raw
 private messages.
+Before finishing, verify the PAM installation acceptance criteria and report each
+criterion one by one.
 ```
 
 That is the preferred workflow: let the agent adapt PAM to the repo instead of
 forcing every project into one rigid template.
+
+### OpenClaw Workspaces
+
+If the target project is an OpenClaw workspace, or it already contains
+OpenClaw-style memory such as `MEMORY.md`, `memory/**/*.md`, memory-wiki files,
+or OpenClaw-specific agent instructions, read
+[`memory/agent-memory/pam-openclaw.md`](memory/agent-memory/pam-openclaw.md)
+after the generic PAM runtime guide.
+
+For OpenClaw, PAM must first map its concepts onto existing runtime/project
+memory. Reuse OpenClaw-native memory and local workspace conventions where they
+already exist. Add only PAM-owned missing pieces, such as graph/index files, and
+do not overwrite `MEMORY.md`, OpenClaw memory corpus files, wiki pages, or
+project-specific memory conventions by default.
 
 ## Copy/Paste Agent Bootstrap
 
@@ -118,18 +140,69 @@ You are setting up Portable Agent Memory for this repository.
    - a knowledge log for durable facts, assumptions, and open questions;
    - a place for raw sources;
    - instructions for future agents.
-4. Keep the structure simple and project-appropriate. Do not add a database,
+4. Update the local agent instruction file, such as `AGENTS.md`, `CLAUDE.md`,
+   `GEMINI.md`, or the equivalent policy file, with the PAM read/update path.
+5. Keep the structure simple and project-appropriate. Do not add a database,
    vector store, cron job, or large framework unless the repository needs it.
-5. Mark confirmed facts, assumptions, open questions, and obsolete knowledge
+   If this is an OpenClaw workspace, read `memory/agent-memory/pam-openclaw.md`
+   and map PAM concepts to existing OpenClaw/project memory before creating new
+   files.
+6. Mark confirmed facts, assumptions, open questions, and obsolete knowledge
    clearly.
-6. Add a short session entry describing what you created and how future agents
+7. Add a short session entry describing what you created and how future agents
    should continue.
-7. Do not store secrets, credentials, cookies, private keys, or raw private
+8. Verify every PAM installation acceptance criterion and include the result in
+   your final response.
+9. Do not store secrets, credentials, cookies, private keys, or raw private
    communications unless the user explicitly approves and the repository is
    private.
 ```
 
 For more variants, see [AGENT_BOOTSTRAP.md](AGENT_BOOTSTRAP.md).
+
+
+## PAM Installation Acceptance Criteria
+
+A PAM installation is not complete until the agent verifies and reports each
+criterion below.
+
+| # | Criterion | Required evidence |
+| --- | --- | --- |
+| 1 | Existing project memory and raw sources were inspected before choosing a layout. | List inspected files/directories. |
+| 2 | A PAM read path exists. | Point to `memory/pam.version.json`, `memory/agent-memory/pam-runtime.md`, or the chosen equivalent. |
+| 3 | A searchable index exists. | Point to `memory/graph/`, a markdown index, or the chosen search mechanism. |
+| 4 | Future agents are instructed. | Show the local agent instruction file that was updated, such as `AGENTS.md`, `CLAUDE.md`, or equivalent. |
+| 5 | Source traceability is preserved. | Show that memory entries include source paths or source notes. |
+| 6 | Safety boundaries are documented. | Confirm secrets/private raw content are excluded and destructive edits require approval. |
+| 7 | Project-specific conventions were preserved. | Explain what was reused, what was added, and what was not overwritten. |
+| 8 | Validation was run when tooling exists. | Include command output or explain why no validation command exists. |
+| 9 | Final response summarizes installation status criterion by criterion. | Provide a numbered checklist with colored status markers: 🟢 `PASS`, 🟡 `PARTIAL`, 🔵 `DEFERRED`, 🔴 `BLOCKED`, or ⚪ `N/A`. |
+
+Final response format after installation:
+
+```text
+PAM integrated: yes/no/partial
+
+Acceptance criteria:
+1. 🟢 PASS — <evidence>
+2. 🟢 PASS — <evidence>
+...
+
+Files added/changed:
+- <path>
+
+Validation:
+- <command/result>
+
+Limitations / next steps:
+- <item or none>
+```
+
+Status markers: 🟢 `PASS`, 🟡 `PARTIAL`, 🔵 `DEFERRED`, 🔴 `BLOCKED`, ⚪ `N/A`.
+
+If any criterion is `PARTIAL` or `BLOCKED`, the agent must explain the blocker
+and the safest next action. Do not claim PAM is fully integrated while any
+required criterion is unresolved.
 
 ## Optional Maintenance Tool
 
