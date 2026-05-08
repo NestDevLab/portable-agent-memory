@@ -130,7 +130,22 @@ If uncertain, report `unknown` or `partial`; do not force OpenClaw specializatio
 4. Update the local agent instruction file, such as `AGENTS.md`, with the PAM read path.
 5. Run validation for generated graph records.
 6. Ask before writing outside PAM-owned paths.
-7. Report the PAM installation acceptance criteria one by one before claiming completion.
+7. Configure a runtime-native maintenance automation, or explicitly mark it `PARTIAL`/`BLOCKED` with the reason.
+8. Report the PAM installation acceptance criteria one by one before claiming completion.
+
+
+## OpenClaw-specific installation acceptance criteria
+
+In addition to the generic PAM installation criteria, an OpenClaw workspace must
+verify these OpenClaw-specific criteria:
+
+1. OpenClaw-native memory remains canonical: `MEMORY.md`, indexed `memory/**/*.md`, OpenClaw recall/search, and memory-wiki when present.
+2. PAM files are treated as an additive routing/index layer, not a replacement for OpenClaw memory.
+3. Local agent instructions, usually `AGENTS.md`, point future agents to the PAM read path.
+4. Project-specific conventions are preserved and are not documented as OpenClaw-native primitives.
+5. A runtime-native maintenance automation is configured, preferably an OpenClaw cron job, to periodically validate/maintain PAM-owned files and write a maintenance report.
+6. The automation is scoped to PAM-owned paths by default and must not rewrite `MEMORY.md`, OpenClaw corpus files, wiki pages, or project-specific conventions unless explicitly requested.
+7. The final installation report lists each OpenClaw-specific criterion as `PASS`, `PARTIAL`, or `BLOCKED` with evidence.
 
 ## Quality gates
 
@@ -143,4 +158,5 @@ A PAM OpenClaw change is not ready unless:
 - It keeps source traceability for generated records.
 - Generic PAM behavior remains valid for non-OpenClaw repositories.
 - Local agent instructions point future agents to the PAM read path.
+- A runtime-native maintenance automation exists, such as an OpenClaw cron job, or the final report explicitly marks automation as `PARTIAL`/`BLOCKED` with the reason.
 - The final response reports each PAM installation acceptance criterion as `PASS`, `PARTIAL`, or `BLOCKED` with evidence.
