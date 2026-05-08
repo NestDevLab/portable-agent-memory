@@ -176,7 +176,7 @@ criterion below.
 | 6 | Safety boundaries are documented. | Confirm secrets/private raw content are excluded and destructive edits require approval. |
 | 7 | Project-specific conventions were preserved. | Explain what was reused, what was added, and what was not overwritten. |
 | 8 | Validation was run when tooling exists. | Include command output or explain why no validation command exists. |
-| 9 | Final response summarizes installation status criterion by criterion. | Provide a numbered checklist with `PASS`, `PARTIAL`, or `BLOCKED`. |
+| 9 | Final response summarizes installation status criterion by criterion. | Provide a numbered checklist with colored status markers: 🟢 `PASS`, 🟡 `PARTIAL`, 🔵 `DEFERRED`, 🔴 `BLOCKED`, or ⚪ `N/A`. |
 
 Final response format after installation:
 
@@ -184,8 +184,8 @@ Final response format after installation:
 PAM integrated: yes/no/partial
 
 Acceptance criteria:
-1. PASS — <evidence>
-2. PASS — <evidence>
+1. 🟢 PASS — <evidence>
+2. 🟢 PASS — <evidence>
 ...
 
 Files added/changed:
@@ -197,6 +197,8 @@ Validation:
 Limitations / next steps:
 - <item or none>
 ```
+
+Status markers: 🟢 `PASS`, 🟡 `PARTIAL`, 🔵 `DEFERRED`, 🔴 `BLOCKED`, ⚪ `N/A`.
 
 If any criterion is `PARTIAL` or `BLOCKED`, the agent must explain the blocker
 and the safest next action. Do not claim PAM is fully integrated while any

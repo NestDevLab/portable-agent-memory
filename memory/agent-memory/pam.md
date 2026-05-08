@@ -213,7 +213,15 @@ Required criteria:
 6. Safety boundaries are documented: no secrets, credentials, cookies, private keys, or unnecessary raw private communications.
 7. Project-specific conventions were preserved rather than overwritten.
 8. Validation was run when tooling exists, or the absence of tooling was stated.
-9. The final response reports every criterion as `PASS`, `PARTIAL`, or `BLOCKED` with evidence.
+9. The final response reports every criterion as `PASS`, `PARTIAL`, `DEFERRED`, or `BLOCKED` with evidence.
+
+Use colored status markers in human-facing reports:
+
+- 🟢 `PASS` — complete and verified.
+- 🟡 `PARTIAL` — partly complete; explain the gap.
+- 🔵 `DEFERRED` — intentionally postponed or declined by the user; include the manual path.
+- 🔴 `BLOCKED` — cannot proceed safely; include blocker and next action.
+- ⚪ `N/A` — not applicable in this environment.
 
 If any criterion is `PARTIAL` or `BLOCKED`, the agent MUST NOT claim PAM is fully
 integrated. It must name the blocker and the safest next action.
@@ -230,8 +238,8 @@ Right final response:
 PAM integrated: yes
 
 Acceptance criteria:
-1. PASS — inspected README.md, docs/, and existing memory/.
-2. PASS — created memory/pam.version.json and memory/agent-memory/pam-runtime.md.
+1. 🟢 PASS — inspected README.md, docs/, and existing memory/.
+2. 🟢 PASS — created memory/pam.version.json and memory/agent-memory/pam-runtime.md.
 ...
 ```
 

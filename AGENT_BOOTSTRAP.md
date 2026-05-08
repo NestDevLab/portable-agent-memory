@@ -51,9 +51,9 @@ Before finishing, enforce the PAM installation acceptance criteria:
 6. safety boundaries are documented;
 7. project-specific conventions were preserved;
 8. validation was run when tooling exists;
-9. final response reports every criterion as PASS, PARTIAL, or BLOCKED.
+9. final response reports every criterion with colored status markers: 🟢 PASS, 🟡 PARTIAL, 🔵 DEFERRED, 🔴 BLOCKED, or ⚪ N/A.
 
-Do not claim PAM is fully integrated unless every required criterion passes.
+Do not claim PAM is fully integrated unless every required criterion passes or a non-required criterion is explicitly deferred/opted out.
 ```
 
 ## Everyday Runtime Prompt
