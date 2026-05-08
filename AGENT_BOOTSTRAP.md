@@ -15,6 +15,11 @@ Read memory/agent-memory/pam.md and memory/agent-memory/llm-wiki.md if present.
 If they are missing, create equivalent files from the Portable Agent Memory
 project.
 
+If this repository is an OpenClaw workspace or contains OpenClaw-style memory
+files such as MEMORY.md, memory/**/*.md, memory-wiki files, or OpenClaw-specific
+agent instructions, also read memory/agent-memory/pam-openclaw.md. Map PAM
+concepts onto existing OpenClaw/project memory before creating new PAM files.
+
 Inspect the repository first. Then create the smallest useful durable memory
 structure for this project.
 
@@ -44,6 +49,10 @@ For normal memory lookup, do not start by reading the full PAM contract or
 llm-wiki reference. First read memory/pam.version.json, memory/graph/catalog.json,
 and the relevant JSONL records in memory/graph/.
 
+If memory/agent-memory/pam-openclaw.md exists, read it before proposing changes
+to MEMORY.md, memory/tasks/, profile memory, decisions, wiki pages, or any
+OpenClaw/workspace-owned memory source.
+
 Open long markdown source files only when the graph digest and source pointer
 are insufficient. Node/npm graph tools are optional; direct JSONL reading is
 valid.
@@ -58,6 +67,8 @@ Read the repository instructions and inspect existing documentation, logs,
 notes, and generated summaries.
 
 Report:
+- whether the repository has OpenClaw-native memory, local workspace conventions,
+  missing PAM pieces, or conflicts;
 - what already acts as durable memory;
 - what is missing;
 - what is duplicated or stale;

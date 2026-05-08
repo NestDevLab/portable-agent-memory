@@ -44,6 +44,9 @@ The important pieces are:
 - [memory/agent-memory/pam.md](memory/agent-memory/pam.md): the Portable Agent
   Memory constitution. This is the setup/protocol reference agents should
   follow when changing or auditing PAM itself.
+- [memory/agent-memory/pam-openclaw.md](memory/agent-memory/pam-openclaw.md):
+  specialization guide for applying PAM inside OpenClaw workspaces without
+  replacing OpenClaw-native memory.
 - [memory/agent-memory/llm-wiki.md](memory/agent-memory/llm-wiki.md): the
   persistent wiki pattern for turning raw material into curated pages.
 - [AGENT_BOOTSTRAP.md](AGENT_BOOTSTRAP.md): copy/paste instructions you can give
@@ -100,6 +103,20 @@ private messages.
 That is the preferred workflow: let the agent adapt PAM to the repo instead of
 forcing every project into one rigid template.
 
+### OpenClaw Workspaces
+
+If the target project is an OpenClaw workspace, or it already contains
+OpenClaw-style memory such as `MEMORY.md`, `memory/**/*.md`, memory-wiki files,
+or OpenClaw-specific agent instructions, read
+[`memory/agent-memory/pam-openclaw.md`](memory/agent-memory/pam-openclaw.md)
+after the generic PAM runtime guide.
+
+For OpenClaw, PAM must first map its concepts onto existing runtime/project
+memory. Reuse OpenClaw-native memory and local workspace conventions where they
+already exist. Add only PAM-owned missing pieces, such as graph/index files, and
+do not overwrite `MEMORY.md`, workspace task files, profile memory, decisions,
+or wiki pages by default.
+
 ## Copy/Paste Agent Bootstrap
 
 Use this prompt in any agent-capable environment:
@@ -120,6 +137,9 @@ You are setting up Portable Agent Memory for this repository.
    - instructions for future agents.
 4. Keep the structure simple and project-appropriate. Do not add a database,
    vector store, cron job, or large framework unless the repository needs it.
+   If this is an OpenClaw workspace, read `memory/agent-memory/pam-openclaw.md`
+   and map PAM concepts to existing OpenClaw/project memory before creating new
+   files.
 5. Mark confirmed facts, assumptions, open questions, and obsolete knowledge
    clearly.
 6. Add a short session entry describing what you created and how future agents

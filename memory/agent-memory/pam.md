@@ -189,6 +189,9 @@ scheduler:
 3. Treat the required capabilities as mandatory outcomes.
 4. Choose the simplest available implementation that satisfies the contract.
 5. Before answering memory-related questions, run the retrieval protocol.
+   If the environment is OpenClaw-like, read `pam-openclaw.md` and map PAM
+   concepts to existing runtime/project memory before implementing new
+   structures.
 6. During scheduled maintenance, run the maintenance routine and produce a short report.
 7. If the current implementation becomes too rigid, obsolete, or inefficient, propose a migration without breaking the core contract.
 

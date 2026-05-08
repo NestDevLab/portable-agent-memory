@@ -11,6 +11,8 @@ for setup, migration, audit, or protocol changes.
    current topic.
 4. Follow relevant one-hop relations in `memory/graph/edges.jsonl`.
 5. Open the referenced `src` files only when the graph digest is insufficient.
+6. If `memory/agent-memory/pam-openclaw.md` exists and the workspace has
+   OpenClaw-style memory, read it before proposing memory writes or migrations.
 
 ## Direct JSONL Fallback
 
@@ -26,6 +28,8 @@ large markdown documents by default.
 ## When To Read Long Docs
 
 - Read `memory/agent-memory/pam.md` for protocol questions.
+- Read `memory/agent-memory/pam-openclaw.md` when `MEMORY.md`, OpenClaw recall,
+  memory-wiki, or OpenClaw workspace conventions are present.
 - Read `memory/agent-memory/llm-wiki.md` for wiki-pattern questions.
 - Read markdown logs only for chronology or details missing from graph records.
 
@@ -50,3 +54,8 @@ context."
 For durable AI memory, add or update graph records first, then keep markdown
 logs/indexes compatible. Do not store secrets, credentials, private data, raw
 private conversations, or machine-specific paths.
+
+In OpenClaw workspaces, first map PAM concepts to existing OpenClaw-native or
+workspace-owned memory. Write only PAM-owned files by default, and do not edit
+`MEMORY.md`, task files, profile memory, decisions, or wiki pages unless the user
+explicitly asks for that change.
