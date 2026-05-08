@@ -130,8 +130,9 @@ If uncertain, report `unknown` or `partial`; do not force OpenClaw specializatio
 4. Update the local agent instruction file, such as `AGENTS.md`, with the PAM read path.
 5. Run validation for generated graph records.
 6. Ask before writing outside PAM-owned paths.
-7. Configure a runtime-native maintenance automation, or explicitly mark it `PARTIAL`/`BLOCKED` with the reason.
-8. Report the PAM installation acceptance criteria one by one before claiming completion.
+7. Present an installation plan before making configuration, mapping, automation, or write-path changes; ask for confirmation when the change is not a simple read-only audit.
+8. Recommend runtime-native maintenance automation and ask whether the user wants it configured; if skipped, record it as an accepted opt-out, not a failed installation.
+9. Report the PAM installation acceptance criteria one by one before claiming completion.
 
 
 ## OpenClaw-specific installation acceptance criteria
@@ -143,9 +144,11 @@ verify these OpenClaw-specific criteria:
 2. PAM files are treated as an additive routing/index layer, not a replacement for OpenClaw memory.
 3. Local agent instructions, usually `AGENTS.md`, point future agents to the PAM read path.
 4. Project-specific conventions are preserved and are not documented as OpenClaw-native primitives.
-5. A runtime-native maintenance automation is configured, preferably an OpenClaw cron job, to periodically validate/maintain PAM-owned files and write a maintenance report.
-6. The automation is scoped to PAM-owned paths by default and must not rewrite `MEMORY.md`, OpenClaw corpus files, wiki pages, or project-specific conventions unless explicitly requested.
-7. The final installation report lists each OpenClaw-specific criterion as `PASS`, `PARTIAL`, or `BLOCKED` with evidence.
+5. Before making configuration, mapping, automation, or write-path changes, the agent presented a plan and got confirmation unless the task was explicitly requested and low-risk.
+6. Runtime-native maintenance automation was offered as a strongly recommended option, preferably an OpenClaw cron job, to periodically validate/maintain PAM-owned files and write a maintenance report.
+7. If automation was accepted, it is scoped to PAM-owned paths by default and must not rewrite `MEMORY.md`, OpenClaw corpus files, wiki pages, or project-specific conventions unless explicitly requested.
+8. If automation was declined or deferred, the final report records the opt-out/defer state and the manual maintenance path.
+9. The final installation report lists each OpenClaw-specific criterion as `PASS`, `PARTIAL`, `DEFERRED`, or `BLOCKED` with evidence.
 
 ## Quality gates
 
@@ -158,5 +161,6 @@ A PAM OpenClaw change is not ready unless:
 - It keeps source traceability for generated records.
 - Generic PAM behavior remains valid for non-OpenClaw repositories.
 - Local agent instructions point future agents to the PAM read path.
-- A runtime-native maintenance automation exists, such as an OpenClaw cron job, or the final report explicitly marks automation as `PARTIAL`/`BLOCKED` with the reason.
-- The final response reports each PAM installation acceptance criterion as `PASS`, `PARTIAL`, or `BLOCKED` with evidence.
+- Runtime-native maintenance automation was offered and either configured, explicitly deferred, or declined by the user.
+- If configured, automation is scoped to PAM-owned paths by default.
+- The final response reports each PAM installation acceptance criterion as `PASS`, `PARTIAL`, `DEFERRED`, or `BLOCKED` with evidence.
