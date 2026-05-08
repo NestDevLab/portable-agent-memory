@@ -30,6 +30,9 @@ Required outcomes:
 - a place for raw sources or references;
 - instructions that tell future agents how to read, update, and maintain memory.
 
+Also update the local agent instruction file, such as AGENTS.md, CLAUDE.md,
+GEMINI.md, or an equivalent policy file, with the PAM read/update path.
+
 Do not add unnecessary infrastructure. Do not add a scheduler, vector search,
 SQLite, MCP, or a large wiki unless this repository actually needs it.
 
@@ -38,6 +41,19 @@ private communications.
 
 After setup, add a short entry explaining what was created, what assumptions
 were made, and what future agents should do next.
+
+Before finishing, enforce the PAM installation acceptance criteria:
+1. inspected existing memory/raw sources;
+2. PAM read path exists;
+3. searchable index exists;
+4. local agent instructions were updated;
+5. source traceability is preserved;
+6. safety boundaries are documented;
+7. project-specific conventions were preserved;
+8. validation was run when tooling exists;
+9. final response reports every criterion as PASS, PARTIAL, or BLOCKED.
+
+Do not claim PAM is fully integrated unless every required criterion passes.
 ```
 
 ## Everyday Runtime Prompt
@@ -74,10 +90,12 @@ Report:
 - what is duplicated or stale;
 - where raw sources should live;
 - what future agents should read first;
+- whether local agent instructions already point to PAM;
 - whether a maintenance tool is useful yet.
 
 Then propose the smallest safe change set to make the repository PAM-compatible.
-Do not modify files until the plan is clear.
+Do not modify files until the plan is clear. Include the installation acceptance
+criteria that must be satisfied before calling the setup complete.
 ```
 
 ## Maintenance Setup Prompt

@@ -1,7 +1,9 @@
 # PAM Runtime Guide
 
 Use this compact path for everyday memory work. Read the full PAM contract only
-for setup, migration, audit, or protocol changes.
+for setup, migration, audit, or protocol changes. During setup or migration,
+verify the PAM installation acceptance criteria in `pam.md` before claiming
+completion.
 
 ## Read Order
 

@@ -127,8 +127,10 @@ If uncertain, report `unknown` or `partial`; do not force OpenClaw specializatio
 1. Detect existing memory sources and conventions.
 2. Produce a mapping table: native / convention / missing / conflicting.
 3. Produce a dry-run graph/write plan under PAM-owned paths only.
-4. Run validation for generated graph records.
-5. Ask before writing outside PAM-owned paths.
+4. Update the local agent instruction file, such as `AGENTS.md`, with the PAM read path.
+5. Run validation for generated graph records.
+6. Ask before writing outside PAM-owned paths.
+7. Report the PAM installation acceptance criteria one by one before claiming completion.
 
 ## Quality gates
 
@@ -140,3 +142,5 @@ A PAM OpenClaw change is not ready unless:
 - It avoids secrets and raw private conversations.
 - It keeps source traceability for generated records.
 - Generic PAM behavior remains valid for non-OpenClaw repositories.
+- Local agent instructions point future agents to the PAM read path.
+- The final response reports each PAM installation acceptance criterion as `PASS`, `PARTIAL`, or `BLOCKED` with evidence.
