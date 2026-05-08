@@ -2,10 +2,49 @@
 
 ## Unreleased
 
-- Added an explicit PAM principle that agent-facing runbooks and skills should
-  be written as AI-agent control surfaces, with MUST/DO NOT rules, final
-  quality gates, wrong/right examples, and mechanically checkable completion
-  criteria.
+## 0.3.0 - 2026-05-08
+
+PAM 0.3.0 adds an OpenClaw specialization profile and makes installation
+completion more auditable across agent runtimes. The graph schema remains
+`pam-graph-v1`; this release does not require a data migration for existing
+0.2.0 graph users.
+
+### Added
+
+- OpenClaw specialization guide: `memory/agent-memory/pam-openclaw.md`.
+- Documentation plans for OpenClaw adaptation and implementation phases under
+  `docs/`.
+- Generic PAM installation acceptance criteria with required final
+  `PASS` / `PARTIAL` / `DEFERRED` / `BLOCKED` reporting.
+- Colored human-facing status markers for acceptance reports:
+  - 🟢 `PASS`
+  - 🟡 `PARTIAL`
+  - 🔵 `DEFERRED`
+  - 🔴 `BLOCKED`
+  - ⚪ `N/A`
+- Explicit setup guidance to update local agent instruction files such as
+  `AGENTS.md`, `CLAUDE.md`, or equivalent policy files with the PAM read path.
+- OpenClaw-specific acceptance criteria: map before implementing, preserve
+  OpenClaw-native memory, keep PAM additive, offer runtime-native maintenance
+  automation, and scope automation to PAM-owned paths when accepted.
+- Migration/adoption guide for 0.2.0 users adopting the 0.3.0 OpenClaw
+  specialization.
+
+### Improved
+
+- Graph node digest validation now enforces the documented digest budget.
+- Runtime docs clarify that PAM graph is a routing/index layer, not a replacement
+  for runtime-native memory.
+- OpenClaw docs distinguish generic OpenClaw-native memory concepts from
+  project-specific conventions.
+
+### Compatibility
+
+- `memoryFormat` remains `graph-v1`.
+- `graphSchemaVersion` remains `pam-graph-v1`.
+- Existing 0.2.0 graph JSONL files remain valid.
+- OpenClaw adoption is additive and should not rewrite existing canonical memory
+  files by default.
 
 ## 0.2.0 - 2026-05-05
 
