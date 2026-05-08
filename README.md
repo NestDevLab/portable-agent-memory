@@ -114,8 +114,8 @@ after the generic PAM runtime guide.
 For OpenClaw, PAM must first map its concepts onto existing runtime/project
 memory. Reuse OpenClaw-native memory and local workspace conventions where they
 already exist. Add only PAM-owned missing pieces, such as graph/index files, and
-do not overwrite `MEMORY.md`, workspace task files, profile memory, decisions,
-or wiki pages by default.
+do not overwrite `MEMORY.md`, OpenClaw memory corpus files, wiki pages, or
+project-specific memory conventions by default.
 
 ## Copy/Paste Agent Bootstrap
 

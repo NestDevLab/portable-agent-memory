@@ -50,8 +50,8 @@ llm-wiki reference. First read memory/pam.version.json, memory/graph/catalog.jso
 and the relevant JSONL records in memory/graph/.
 
 If memory/agent-memory/pam-openclaw.md exists, read it before proposing changes
-to MEMORY.md, memory/tasks/, profile memory, decisions, wiki pages, or any
-OpenClaw/workspace-owned memory source.
+to `MEMORY.md`, OpenClaw memory corpus files, wiki pages, or any
+OpenClaw/project-owned memory source.
 
 Open long markdown source files only when the graph digest and source pointer
 are insufficient. Node/npm graph tools are optional; direct JSONL reading is

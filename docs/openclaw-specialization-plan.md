@@ -34,7 +34,7 @@ For OpenClaw this means, for example:
 - `MEMORY.md` maps to PAM curated long-term memory / index.
 - OpenClaw memory search maps to PAM searchable retrieval.
 - `memory-wiki` maps to PAM curated wiki / source-backed synthesis.
-- Workspace task files, if present, map to PAM task or follow-up concepts as project conventions.
+- Project-specific memory conventions, if present, map to PAM concepts only as local conventions.
 - PAM graph files may be added as a compact portability/index layer only when they do not replace existing sources.
 
 ## Goals
@@ -50,7 +50,7 @@ For OpenClaw this means, for example:
 ## Non-goals
 
 - Replace `MEMORY.md`.
-- Replace workspace-specific task conventions such as `memory/tasks/`.
+- Replace project-specific memory conventions.
 - Replace OpenClaw memory search.
 - Replace the compiled wiki.
 - Require a database, vector store, MCP server, or scheduler.
@@ -105,8 +105,8 @@ Add deterministic detection for OpenClaw workspaces and known workspace-specific
 Initial detection signals:
 
 - `MEMORY.md` exists;
-- `memory/tasks/` exists as a workspace convention signal, not a generic OpenClaw primitive;
-- `SOUL.md`, `USER.md`, or `AGENTS.md` mention OpenClaw memory behavior;
+- local project-specific memory conventions may exist, but are not generic OpenClaw primitives;
+- local agent instructions mention OpenClaw memory behavior;
 - bundled memory-wiki tooling/files are present.
 
 Detection should be conservative. If uncertain, report `unknown` instead of forcing the OpenClaw specialization.
@@ -145,12 +145,13 @@ Initial OpenClaw/workspace-to-PAM mapping:
 | Source | PAM node kind | Notes |
 | --- | --- | --- |
 | `MEMORY.md` curated index | `memory-index` | high-level routing node |
-| `memory/tasks/*.md` | `task-list` | workspace convention, not OpenClaw-native |
-| `memory/profile/*` | `profile` / `preference` | workspace convention; only when safe for context |
-| `memory/decisions/*` | `decision` | workspace convention |
-| `shared/projects/*` | `project` / `project-doc` | workspace convention |
+| `memory/**/*.md` corpus entry | `memory-source` / specific inferred kind | conservative classification |
 | compiled wiki page | `wiki-page` | source-backed synthesis |
-| daily notes | `log` | usually source-only unless promoted |
+| project-specific task or follow-up convention | `task-list` / `follow-up` | local convention only |
+| project-specific decision or procedure convention | `decision` / `procedure` | local convention only |
+| project-specific profile or preference convention | `profile` / `preference` | private by default |
+| project-specific documentation corpus | `project` / `project-doc` | local convention only |
+| chronological log source | `log` | usually source-only unless promoted |
 
 Node digest rule:
 
@@ -165,7 +166,7 @@ Add OpenClaw-style fixture workspaces under tests/fixtures or equivalent.
 Scenarios:
 
 1. Minimal generic PAM workspace: no OpenClaw specialization.
-2. OpenClaw workspace with `MEMORY.md` plus workspace task convention: detected as OpenClaw with task convention support.
+2. OpenClaw workspace with `MEMORY.md` plus a project-specific memory convention: detected as OpenClaw with convention support.
 3. Partial/ambiguous workspace: reports unknown/partial.
 4. Sensitive source path: excluded or warned.
 5. Generated graph digests validate under existing graph limits.
@@ -189,7 +190,7 @@ Rules:
 - No deletion of OpenClaw files.
 - No copying raw private chats into graph JSONL.
 - No graph records sourced from secret storage.
-- No public/group-chat assumption that private profile memory is readable.
+- No public/group-chat assumption that private profile/preference memory is readable.
 - All generated records must include a source path or source note.
 
 ## Implementation phases
@@ -227,7 +228,7 @@ Acceptance:
 
 Acceptance:
 
-- command never edits `MEMORY.md`, workspace task files, or wiki pages;
+- command never edits `MEMORY.md`, OpenClaw memory corpus files, project-specific conventions, or wiki pages;
 - generated graph validates;
 - report explains source coverage and exclusions.
 

@@ -57,5 +57,5 @@ private conversations, or machine-specific paths.
 
 In OpenClaw workspaces, first map PAM concepts to existing OpenClaw-native or
 workspace-owned memory. Write only PAM-owned files by default, and do not edit
-`MEMORY.md`, task files, profile memory, decisions, or wiki pages unless the user
-explicitly asks for that change.
+`MEMORY.md`, OpenClaw memory corpus files, wiki pages, or project-specific
+memory conventions unless the user explicitly asks for that change.

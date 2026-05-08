@@ -11,7 +11,7 @@ OpenClaw remains canonical. PAM provides portable metadata, graph summaries, and
 ## Non-goals
 
 - Do not replace `MEMORY.md`.
-- Do not replace `memory/tasks/`.
+- Do not replace project-specific memory conventions.
 - Do not replace the compiled wiki or OpenClaw memory search.
 - Do not store secrets, credentials, private raw chats, cookies, or tokens.
 - Do not require a database, vector store, MCP server, or scheduler.
@@ -21,11 +21,9 @@ OpenClaw remains canonical. PAM provides portable metadata, graph summaries, and
 For an OpenClaw workspace, PAM should treat these as source systems, not as files to overwrite:
 
 - `MEMORY.md`: curated long-term memory index.
-- `memory/YYYY-MM-DD.md` and/or `memory/daily/`: chronological notes.
-- `memory/tasks/`: persistent task source of truth.
-- `memory/profile/`: durable user/profile notes when access is appropriate.
-- compiled wiki vault: source-backed syntheses and entity pages.
-- project docs under `shared/projects/`: durable project knowledge.
+- `memory/**/*.md`: indexed OpenClaw memory corpus where present.
+- compiled wiki vault: source-backed syntheses and entity pages where present.
+- project-specific memory conventions: local task notes, decision logs, profile/preference notes, project docs, or chronological logs when the project defines them.
 
 ## Proposed layout
 
@@ -82,19 +80,18 @@ Canonical memory updates should continue through OpenClaw's existing memory/wiki
 | --- | --- |
 | Person/profile | `k: person` or `k: profile` node |
 | Project/venture | `k: project` node |
-| Task file | `k: task-list` node with edges to projects/people |
-| Decision | `k: decision` node |
-| Procedure/playbook | `k: procedure` node |
+| Project-specific task or follow-up convention | `k: task-list` or `k: follow-up` node |
+| Project-specific decision or procedure convention | `k: decision` or `k: procedure` node |
 | Wiki page | `k: wiki-page` node |
-| Daily note | source-only or `k: log` node |
-| Preference | `k: preference` node with scoped edges |
+| Chronological log source | source-only or `k: log` node |
+| Project-specific profile/preference convention | `k: profile` or `k: preference` node with scoped edges |
 
 ## Safety rules
 
 - Graph digests must be short and non-sensitive.
 - `src` paths must not point to secret stores.
 - Generated graph must not include raw private conversations by default.
-- Shared/group contexts must avoid private profile memory unless explicitly allowed.
+- Shared/group contexts must avoid private profile or preference memory unless explicitly allowed.
 - Maintenance should fail closed when source classification is unclear.
 
 ## First implementation milestone
