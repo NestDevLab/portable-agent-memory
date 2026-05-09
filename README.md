@@ -290,6 +290,17 @@ The benchmark is a read-volume proxy, not a model billing report. It estimates
 the amount of text an agent needs to inspect for the same generic memory lookup
 path before and after graph-v1.
 
+## OpenClaw Daily Graph Maintenance
+
+For OpenClaw-style workspaces, recurring PAM maintenance should keep the graph
+useful as a compact knowledge map. It should validate the graph, scan recent
+durable memory, promote safe source-traced records, update the catalog, and
+write a concise maintenance report.
+
+It should not be only an installation acceptance-criteria checklist. See
+[docs/openclaw-daily-graph-maintenance.md](docs/openclaw-daily-graph-maintenance.md)
+for the reusable runbook.
+
 ## Maintenance Safety Model
 
 The maintenance tool is conservative:
