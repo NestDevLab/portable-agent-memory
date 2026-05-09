@@ -135,6 +135,35 @@ If uncertain, report `unknown` or `partial`; do not force OpenClaw specializatio
 9. Report the PAM installation acceptance criteria one by one before claiming completion.
 
 
+## Runtime-native graph maintenance
+
+When OpenClaw cron or another runtime-native scheduler is configured for PAM,
+the recurring job SHOULD perform real graph maintenance, not only repeat the
+installation acceptance criteria.
+
+Daily or near-daily maintenance should:
+
+1. Validate `memory/graph/*.jsonl`.
+2. Read the latest PAM maintenance report to identify the previous state.
+3. Do a bounded scan of recent durable memory, usually the last 24-48 hours or
+   since the previous maintenance run.
+4. Promote only stable, useful, non-sensitive records into PAM-owned graph files.
+5. Prefer entities and relations such as projects, systems, decisions, tasks,
+   risks, blockers, packages, repositories, policies, dependencies, and
+   automations.
+6. Keep every graph record compact and source-traced.
+7. Update `catalog.json`, validate again, and write a concise report under
+   `memory/maintenance/`.
+8. Include a short highlights section with 3-7 public-safe bullets summarizing
+   the most important memories found, promoted, skipped, or blocked.
+
+The daily report may include acceptance/status checks, but those checks are
+secondary. It should also include human-readable highlights. If no graph
+candidates were found, the report should say what was scanned and why nothing
+was promoted.
+
+For a reusable job runbook, see `docs/openclaw-daily-graph-maintenance.md`.
+
 ## OpenClaw-specific installation acceptance criteria
 
 In addition to the generic PAM installation criteria, an OpenClaw workspace must
