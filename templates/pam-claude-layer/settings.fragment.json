@@ -1,0 +1,7 @@
+{
+  "statusLine": {
+    "type": "command",
+    "command": "{{LAYER_DIR}}/statusline/pam-statusline.sh",
+    "padding": 1
+  }
+}
