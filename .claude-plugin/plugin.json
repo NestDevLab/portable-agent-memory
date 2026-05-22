@@ -1,0 +1,26 @@
+{
+  "name": "pam",
+  "displayName": "Portable Agent Memory",
+  "version": "0.4.0",
+  "description": "Persistent, portable memory workspace for AI agents: graph + markdown logs, hygiene tooling, and Claude Code integration (MCP server, agents, slash commands, hooks).",
+  "author": {
+    "name": "Stefano Guerrini"
+  },
+  "repository": "https://github.com/NestDevLab/portable-agent-memory",
+  "license": "MIT",
+  "keywords": [
+    "memory",
+    "mcp",
+    "agents",
+    "knowledge-graph",
+    "claude-code"
+  ],
+  "mcpServers": {
+    "pam": {
+      "command": "node",
+      "args": [
+        "${CLAUDE_PLUGIN_ROOT}/tools/pam-mcp-server.mjs"
+      ]
+    }
+  }
+}
