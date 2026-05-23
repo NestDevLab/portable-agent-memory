@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+### Added: Kimi Code CLI integration
+
+- `tools/kimi/install-mcp.mjs` registers the PAM MCP server with Kimi Code CLI
+  by writing an absolute-path entry into `~/.kimi/mcp.json`.
+- `tools/kimi/templates/mcp.fragment.json` is the config template used by the
+  installer.
+- `tools/kimi/docs/pam-kimi-layer.md` covers install, verify, uninstall, and
+  ad-hoc `--mcp-config-file` usage.
+- `npm run kimi:mcp:install` shortcut for the installer.
+- `docs/mcp-server.md` and `AGENT_BOOTSTRAP.md` gain Kimi-specific sections.
+
 ## 0.4.0 - 2026-05-21
 
 PAM 0.4.0 ships the optional agent layer end-to-end: a local stdio MCP

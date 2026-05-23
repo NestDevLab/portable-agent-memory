@@ -192,6 +192,20 @@ The plugin format is Claude Code-specific. For other hosts, add a stdio MCP
 server entry pointing at `tools/pam-mcp-server.mjs`. See
 [docs/mcp-server.md](docs/mcp-server.md) for host-specific snippets.
 
+### Kimi Code CLI
+
+```text
+Install PAM for Kimi Code CLI.
+
+Steps:
+- run `node tools/kimi/install-mcp.mjs --apply` from the PAM workspace root;
+- run `kimi mcp test pam` and confirm the server responds with tool names;
+- start a Kimi session in the same workspace and ask it to read `memory/pam.version.json`.
+
+Report every step with a colored marker: 🟢 PASS, 🟡 PARTIAL, 🔵 DEFERRED,
+🔴 BLOCKED, or ⚪ N/A.
+```
+
 ## Ongoing Session Closeout Prompt
 
 ```text

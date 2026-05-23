@@ -22,6 +22,7 @@
     "mcp:serve": "node tools/pam-mcp-server.mjs",
     "mcp:smoke": "node tools/pam-mcp-server.mjs --smoke",
     "claude:statusline:install": "node tools/claude/install-statusline.mjs",
+    "kimi:mcp:install": "node tools/kimi/install-mcp.mjs",
     "test": "node --test tools/test-*.mjs"
   },
   "keywords": [

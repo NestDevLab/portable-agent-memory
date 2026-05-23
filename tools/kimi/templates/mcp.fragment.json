@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "pam": {
+      "command": "node",
+      "args": [
+        "{{SERVER_PATH}}",
+        "--workspace",
+        "{{WORKSPACE_PATH}}"
+      ]
+    }
+  }
+}
