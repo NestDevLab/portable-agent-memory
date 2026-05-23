@@ -47,27 +47,27 @@ existing 0.3.0 graph-v1 workspaces work without modification.
 - `.claude-plugin/plugin.json` declares the plugin (name `pam`, version
   0.4.0) and inlines the `mcpServers` config; installing the plugin starts
   the PAM MCP server automatically.
-- `.claude/commands/`: `/pam:dream` (hygiene pass: `graph_validate` +
+- `tools/claude/commands/`: `/pam:dream` (hygiene pass: `graph_validate` +
   `graph_reindex` + `memory_audit`), `/pam:status` (read-only workspace
   snapshot), `/pam:explain` (inlined shell block that prints the status-line
   legend with live values; zero LLM reasoning per invocation),
   `/pam:enable-status-line` (toggle the statusline by renaming the
   `statusLine` key in `settings.json` to/from `_pamDisabledStatusLine`).
-- `.claude/agents/`: `curator` and `scribe`.
-- `hooks/hooks.json` wires `SessionStart` (catalog-freshness check, pending-
+- `tools/claude/agents/`: `curator` and `scribe`.
+- `tools/claude/hooks/hooks.json` wires `SessionStart` (catalog-freshness check, pending-
   proposal nag, statusline-style summary) and `PostToolUse` matching
   `mcp__pam__memory_append` (per-session append counter at
   `memory/.session/<session_id>.json`).
-- Statusline (`templates/pam-claude-layer/statusline/pam-statusline.sh`)
+- Statusline (`tools/claude/templates/statusline/pam-statusline.sh`)
   shows `🧠 PAM <version> · <glyph> <N>n/<M>e · 📋 <pending> · 💤 <age> ·
   ✍️ <appends>`. Pending-proposal count excludes `*.applied.json`.
-- `tools/install-pam-statusline.mjs` (`npm run statusline:install`) for
+- `tools/claude/install-statusline.mjs` (`npm run claude:statusline:install`) for
   users who want only the statusline without the full plugin.
 
 ### Added: Docs and tests
 
-- `docs/mcp-server.md`, `docs/curator-agent.md`, `docs/scribe-agent.md`,
-  `docs/pam-claude-layer.md`.
+- `docs/mcp-server.md` (generic MCP docs), `tools/claude/docs/curator-agent.md`,
+  `tools/claude/docs/scribe-agent.md`, `tools/claude/docs/pam-claude-layer.md`.
 - `AGENT_BOOTSTRAP.md` gains an "Optional Agent Layer (PAM 0.4.0+)" section
   with copy/paste install prompts.
 - Tests: `test-mcp-transport.mjs`, `test-memory-audit.mjs`,

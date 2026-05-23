@@ -6,7 +6,7 @@ import { loadConfig } from "../memory-maintenance.mjs";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const DEFAULT_WORKSPACE_ROOT = path.resolve(__dirname, "..", "..");
+const DEFAULT_WORKSPACE_ROOT = process.cwd();
 
 function resolveWorkspaceRoot(input) {
   if (!input) return DEFAULT_WORKSPACE_ROOT;

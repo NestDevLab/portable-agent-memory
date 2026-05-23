@@ -4,7 +4,7 @@ import os from "node:os";
 import path from "node:path";
 import test from "node:test";
 
-import { proposeEdit } from "./lib/memory-proposals.mjs";
+import { applyUnifiedDiff, parseUnifiedDiff, proposeEdit } from "./lib/memory-proposals.mjs";
 
 function makeWorkspace() {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "pam-proposals-test-"));
@@ -158,4 +158,29 @@ test("proposeEdit rejects diffs over the size cap", () => {
   });
   assert.equal(result.ok, false);
   assert.match(result.error, /exceeds/i);
+});
+
+test("applyUnifiedDiff handles multi-hunk patches with line count changes", () => {
+  const content = "line1\nline2\nline3\nline4\nline5\nline6\nline7\nline8\n";
+  const patch = [
+    "--- a/file.txt",
+    "+++ b/file.txt",
+    "@@ -1,4 +1,3 @@",
+    " line1",
+    "-line2",
+    " line3",
+    " line4",
+    "@@ -5,4 +4,3 @@",
+    " line5",
+    "-line6",
+    " line7",
+    " line8"
+  ].join("\n") + "\n";
+
+  const parsed = parseUnifiedDiff(patch);
+  assert.equal(parsed.ok, true);
+  const applied = applyUnifiedDiff(content, parsed);
+  assert.equal(applied.ok, true);
+  const expected = "line1\nline3\nline4\nline5\nline7\nline8\n";
+  assert.equal(applied.next, expected);
 });

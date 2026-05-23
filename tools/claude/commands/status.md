@@ -20,7 +20,7 @@ Print a one-shot status snapshot for the current PAM workspace. Read-only.
 1. Call `mcp__pam__pam_version` and `mcp__pam__memory_state`. If no PAM workspace is detected, say so and stop.
 2. Call `mcp__pam__graph_stats` for live node/edge counts and health.
 3. Call `mcp__pam__maintenance_config` to list managed logs and thresholds.
-4. Count pending proposals: `ls memory/maintenance/proposals/*.json 2>/dev/null | wc -l`.
+4. Count pending proposals: `find memory/maintenance/proposals -maxdepth 1 -name '*.json' ! -name '*.applied.json' 2>/dev/null | wc -l`.
 5. Report active session activity by reading any `memory/.session/*.json` files (these are per-session append counters written by the post-memory-append hook).
 
 ## Output format

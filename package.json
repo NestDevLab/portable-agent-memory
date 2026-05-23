@@ -21,7 +21,7 @@
     "migrations:check": "node tools/check-migrations.mjs",
     "mcp:serve": "node tools/pam-mcp-server.mjs",
     "mcp:smoke": "node tools/pam-mcp-server.mjs --smoke",
-    "statusline:install": "node tools/install-pam-statusline.mjs",
+    "claude:statusline:install": "node tools/claude/install-statusline.mjs",
     "test": "node --test tools/test-*.mjs"
   },
   "keywords": [

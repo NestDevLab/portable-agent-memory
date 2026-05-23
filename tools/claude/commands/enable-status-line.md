@@ -28,7 +28,7 @@ When disabled, the entry is **moved** to `_pamDisabledStatusLine` (not deleted),
 2. Locate the active settings file in this order; pick the first that contains a PAM-layer status line config (either `statusLine.command` or `_pamDisabledStatusLine.command` matching the regex `pam-layer/statusline/pam-statusline\.sh$`):
    - `./.claude/settings.json` (project scope)
    - `~/.claude/settings.json` (user scope)
-   If neither file matches, report: "No PAM status line is configured in project or user settings. The plugin does not ship the status line (Claude Code requires it at user scope); install it separately with `node tools/install-pam-statusline.mjs --apply` from the PAM repo." and stop.
+   If neither file matches, report: "No PAM status line is configured in project or user settings. The plugin does not ship the status line (Claude Code requires it at user scope); install it separately with `node tools/claude/install-statusline.mjs --apply` from the PAM repo." and stop.
 3. Determine current state from that file:
    - **enabled** - `statusLine.command` is the pam-layer statusline
    - **disabled** - `_pamDisabledStatusLine.command` is the pam-layer statusline

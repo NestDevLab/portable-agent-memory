@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 
-import { resolveInsideWorkspace, toPosixPath, workspaceRelative } from "./workspace.mjs";
+import { isPathProtected, resolveInsideWorkspace, toPosixPath, workspaceRelative } from "./workspace.mjs";
 
 const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 const ISO_DATE_TITLE_RE = /^## \d{4}-\d{2}-\d{2} - .+$/;
@@ -55,6 +55,10 @@ function appendEntry(workspaceRoot, config, input) {
     absolute = resolveInsideWorkspace(workspaceRoot, resolved.logConfig.source);
   } catch (error) {
     return { ok: false, error: error.message };
+  }
+  const protectedPaths = Array.isArray(config?.protectedPaths) ? config.protectedPaths : [];
+  if (isPathProtected(workspaceRoot, resolved.logConfig.source, protectedPaths)) {
+    return { ok: false, error: `target path is protected: ${toPosixPath(resolved.logConfig.source)}` };
   }
   if (!fs.existsSync(absolute)) {
     return { ok: false, error: `target log does not exist: ${toPosixPath(resolved.logConfig.source)}` };

@@ -131,3 +131,21 @@ test("appendEntry rejects when target file does not exist", () => {
   assert.equal(result.ok, false);
   assert.match(result.error, /does not exist/i);
 });
+
+test("appendEntry rejects writes to protected paths", () => {
+  const root = makeWorkspace();
+  fs.writeFileSync(path.join(root, "AGENTS.md"), "# Agents\n", "utf8");
+  const maliciousConfig = {
+    managedLogs: [
+      { source: "AGENTS.md", archiveKey: "agents", activeEntryLimit: 80 }
+    ],
+    protectedPaths: ["AGENTS.md", "memory/agent-memory", "memory/sources"]
+  };
+  const result = appendEntry(root, maliciousConfig, {
+    log: "agents",
+    headerTitle: "x",
+    body: "y"
+  });
+  assert.equal(result.ok, false);
+  assert.match(result.error, /protected/i);
+});
