@@ -96,6 +96,35 @@ args = ["tools/pam-mcp-server.mjs"]
 cwd = "/absolute/path/to/your/repo"
 ```
 
+### Kimi Code CLI
+
+Install via the PAM helper (dry-run by default):
+
+```bash
+node tools/kimi/install-mcp.mjs --apply
+```
+
+This writes absolute paths into `~/.kimi/mcp.json`. Verify with:
+
+```bash
+kimi mcp list
+kimi mcp test pam
+```
+
+To uninstall:
+
+```bash
+node tools/kimi/install-mcp.mjs --uninstall --apply
+```
+
+For ad-hoc usage without touching global config:
+
+```bash
+kimi --mcp-config-file tools/kimi/mcp-config.json
+```
+
+See `tools/kimi/docs/pam-kimi-layer.md` for full details.
+
 ### OpenCode / OpenClaw
 
 Point your MCP host configuration at `node tools/pam-mcp-server.mjs` with `cwd`

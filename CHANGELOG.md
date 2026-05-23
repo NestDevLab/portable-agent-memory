@@ -64,6 +64,18 @@ existing 0.3.0 graph-v1 workspaces work without modification.
 - `tools/claude/install-statusline.mjs` (`npm run claude:statusline:install`) for
   users who want only the statusline without the full plugin.
 
+### Added: Kimi Code CLI integration
+
+- `tools/kimi/install-mcp.mjs` registers the PAM MCP server with Kimi Code
+  CLI by writing an absolute-path entry into `~/.kimi/mcp.json`.
+- `tools/kimi/templates/mcp.fragment.json` is the config template used by
+  the installer.
+- `tools/kimi/docs/pam-kimi-layer.md` covers install, verify, uninstall,
+  and ad-hoc `--mcp-config-file` usage.
+- `npm run kimi:mcp:install` shortcut for the installer.
+- `docs/mcp-server.md` and `AGENT_BOOTSTRAP.md` gain Kimi-specific
+  sections.
+
 ### Added: Docs and tests
 
 - `docs/mcp-server.md` (generic MCP docs), `tools/claude/docs/curator-agent.md`,
