@@ -10,12 +10,12 @@
 // Dry-run by default. Pass --apply to actually write files.
 //
 // Usage:
-//   node tools/install-pam-statusline.mjs                  # dry-run, user scope
-//   node tools/install-pam-statusline.mjs --apply          # install to ~/.claude/
-//   node tools/install-pam-statusline.mjs --scope project --apply
-//   node tools/install-pam-statusline.mjs --target /path/to/.claude --apply
-//   node tools/install-pam-statusline.mjs --apply --force  # overwrite existing files
-//   node tools/install-pam-statusline.mjs --apply --uninstall
+//   node tools/claude/install-statusline.mjs                  # dry-run, user scope
+//   node tools/claude/install-statusline.mjs --apply          # install to ~/.claude/
+//   node tools/claude/install-statusline.mjs --scope project --apply
+//   node tools/claude/install-statusline.mjs --target /path/to/.claude --apply
+//   node tools/claude/install-statusline.mjs --apply --force  # overwrite existing files
+//   node tools/claude/install-statusline.mjs --apply --uninstall
 
 import fs from "node:fs";
 import os from "node:os";
@@ -24,8 +24,8 @@ import { fileURLToPath } from "node:url";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const REPO_ROOT = path.resolve(__dirname, "..");
-const TEMPLATE_ROOT = path.join(REPO_ROOT, "templates", "pam-claude-layer");
+const REPO_ROOT = path.resolve(__dirname, "..", "..");
+const TEMPLATE_ROOT = path.join(REPO_ROOT, "tools", "claude", "templates");
 
 function parseArgs(argv) {
   const out = { apply: false, force: false, scope: "user", target: null, uninstall: false };

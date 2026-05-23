@@ -15,6 +15,14 @@
     "knowledge-graph",
     "claude-code"
   ],
+  "commands": [
+    "tools/claude/commands/dream.md",
+    "tools/claude/commands/enable-status-line.md",
+    "tools/claude/commands/explain.md",
+    "tools/claude/commands/status.md"
+  ],
+  "agents": "tools/claude/agents",
+  "hooks": "tools/claude/hooks/hooks.json",
   "mcpServers": {
     "pam": {
       "command": "node",

@@ -185,7 +185,8 @@ function applyUnifiedDiff(currentContent, parsed) {
   if (trailingNewline && lines.length > 0 && lines[lines.length - 1] === "") {
     lines = lines.slice(0, -1);
   }
-  for (const hunk of parsed.hunks) {
+  const sortedHunks = [...parsed.hunks].sort((a, b) => b.oldStart - a.oldStart);
+  for (const hunk of sortedHunks) {
     const applied = applyUnifiedHunk(lines, hunk);
     if (!applied.ok) return applied;
     lines = applied.lines;

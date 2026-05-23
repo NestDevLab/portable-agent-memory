@@ -32,16 +32,16 @@ ships a small installer that drops a statusline script into
 
 ```bash
 # Dry-run (default): prints the plan without writing anything.
-node tools/install-pam-statusline.mjs
+node tools/claude/install-statusline.mjs
 
 # Install into ~/.claude/ (default scope: user).
-node tools/install-pam-statusline.mjs --apply
+node tools/claude/install-statusline.mjs --apply
 
 # Install into <cwd>/.claude/ instead.
-node tools/install-pam-statusline.mjs --scope project --apply
+node tools/claude/install-statusline.mjs --scope project --apply
 
 # Install into a custom directory.
-node tools/install-pam-statusline.mjs --target /path/to/repo --apply
+node tools/claude/install-statusline.mjs --target /path/to/repo --apply
 ```
 
 The status line is silent outside PAM workspaces, so it is safe to install
@@ -60,8 +60,8 @@ user-wide. Inside a workspace it prints:
 ### Uninstall the status line
 
 ```bash
-node tools/install-pam-statusline.mjs --uninstall            # dry-run
-node tools/install-pam-statusline.mjs --uninstall --apply    # remove files; clean settings.json
+node tools/claude/install-statusline.mjs --uninstall            # dry-run
+node tools/claude/install-statusline.mjs --uninstall --apply    # remove files; clean settings.json
 ```
 
 Uninstall only touches entries whose `command` path lives under the layer dir,
@@ -75,12 +75,13 @@ so it won't disturb unrelated `statusLine` settings.
 ## Plugin layout
 
 ```
-.claude-plugin/plugin.json          # plugin manifest
-.mcp.json                           # bundled MCP server entry
-.claude/agents/                     # curator.md, scribe.md
-.claude/commands/                   # dream.md, status.md, explain.md, enable-status-line.md
-hooks/                              # session-start.sh, post-memory-append.sh, hooks.json
-tools/pam-mcp-server.mjs            # the MCP server itself
+.claude-plugin/plugin.json          # plugin manifest (root-level discovery)
+tools/claude/agents/                # curator.md, scribe.md
+tools/claude/commands/              # dream.md, status.md, explain.md, enable-status-line.md
+tools/claude/hooks/                 # session-start.sh, post-memory-append.sh, hooks.json
+tools/claude/templates/             # statusline assets and settings fragment
+tools/claude/install-statusline.mjs # status line installer
+tools/pam-mcp-server.mjs            # generic MCP server (used by all hosts)
 ```
 
 The repo also adds `memory/.session/` to `.gitignore` since the post-memory-append hook writes per-session counters there.
@@ -95,7 +96,7 @@ The repo also adds `memory/.session/` to `.gitignore` since the post-memory-appe
 
 The plugin format is Claude Code-specific. For Cursor, Codex, OpenClaw, and
 others, register the stdio MCP server (`tools/pam-mcp-server.mjs`) by hand.
-See [docs/mcp-server.md](mcp-server.md) for host-specific snippets.
+See [../../docs/mcp-server.md](../../docs/mcp-server.md) for host-specific snippets.
 
 ## Relationship to the MCP server and subagents
 
