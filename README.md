@@ -11,6 +11,10 @@ The goal is simple: when a new agent opens the repo tomorrow, it should know
 where to look, what changed, what is trusted, what is uncertain, and how to keep
 the memory healthy.
 
+<img src="https://upload.wikimedia.org/wikipedia/en/6/67/Pam_Beesley.jpg" alt="Pam Beesly" width="200">
+
+[Pam Beesley, mascotte of the project](https://en.wikipedia.org/wiki/Pam_Beesly)
+
 ## Why This Exists
 
 Most AI work disappears into chat history. The next session starts from a vague
