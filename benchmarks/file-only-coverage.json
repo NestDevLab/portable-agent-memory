@@ -1,0 +1,26 @@
+{
+  "name": "PAM file-only coverage smoke",
+  "description": "Queries an agent should route through graph files before opening long sources.",
+  "queries": [
+    {
+      "q": "PAM",
+      "expectedId": "project:pam"
+    },
+    {
+      "q": "runtime guide",
+      "expectedId": "doc:runtime"
+    },
+    {
+      "q": "graph cli",
+      "expectedId": "tool:graph"
+    },
+    {
+      "q": "markdown migration",
+      "expectedId": "migration:markdown-to-graph-v1"
+    },
+    {
+      "q": "agent-facing runbooks",
+      "expectedId": "principle:agent-facing-runbooks"
+    }
+  ]
+}

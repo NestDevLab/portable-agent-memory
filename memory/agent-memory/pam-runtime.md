@@ -16,6 +16,29 @@ completion.
 6. If `memory/agent-memory/pam-openclaw.md` exists and the workspace has
    OpenClaw-style memory, read it before proposing memory writes or migrations.
 
+## File-Only Efficiency Gate
+
+When the agent has only file read/search tools, PAM should still reduce
+retrieval cost. For memory, project, task, decision, or procedure questions:
+
+- Use the graph-first path above before scanning broad markdown corpora.
+- Keep initial routing to `memory/pam.version.json`, `memory/graph/catalog.json`,
+  `aliases.jsonl`, `nodes.jsonl`, and `edges.jsonl`.
+- Follow at most one source file from the best matching node before falling
+  back to a wider search.
+- Treat missing aliases, stale statuses, and broad fallback as coverage gaps to
+  record in the next maintenance pass.
+
+Validate this behavior with:
+
+```bash
+npm run memory:graph:coverage -- --json
+```
+
+Default acceptance target: at least 80% of realistic queries should route to
+the expected node with no more than 5 graph files and 100 KB read before source
+fallback.
+
 ## Direct JSONL Fallback
 
 Node tools are optional. Without Node, use any text search or JSONL parser:
