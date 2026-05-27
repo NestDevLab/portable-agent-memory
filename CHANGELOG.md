@@ -2,6 +2,34 @@
 
 ## Unreleased
 
+## 0.5.0 - 2026-05-27
+
+PAM 0.5.0 adds a measurable file-only retrieval gate for agents that cannot use
+semantic memory search. The graph schema remains `pam-graph-v1`; this release
+also includes the migration-enforcement tooling introduced after 0.3.0.
+
+### Added
+
+- `memory:graph:coverage` CLI for graph-first coverage reports.
+- Default file-only coverage scenario at `benchmarks/file-only-coverage.json`.
+- Migration guide for 0.4.0 users adopting file-only coverage.
+- Runtime guidance requiring graph-first lookup before broad corpus scans.
+
+### Improved
+
+- Graph memory now includes aliases and nodes for the coverage scenario.
+- Coverage output reports aggregate read volume, targeted source counts, hit
+  rate, and `PASS` / `PARTIAL` / `BLOCKED` status without raw source text or
+  absolute paths.
+- README documents the default 5-file / 100 KB graph-first budget and 80% hit
+  rate target.
+
+### Compatibility
+
+- `memoryFormat` remains `graph-v1`.
+- `graphSchemaVersion` remains `pam-graph-v1`.
+- Existing 0.4.0 graph JSONL files remain valid.
+
 ### Added: Kimi Code CLI integration
 
 - `tools/kimi/install-mcp.mjs` registers the PAM MCP server with Kimi Code CLI

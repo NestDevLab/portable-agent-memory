@@ -7,6 +7,13 @@ const __dirname = path.dirname(__filename);
 const WORKSPACE_ROOT = path.resolve(__dirname, "..");
 const GRAPH_DIR = "memory/graph";
 const MAX_NODE_DIGEST_CHARS = 180;
+const DEFAULT_COVERAGE_SCENARIO = "benchmarks/file-only-coverage.json";
+const DEFAULT_FILE_ONLY_BUDGET = {
+  maxCoreFiles: 5,
+  maxCoreBytes: 100 * 1024,
+  maxSourceFilesPerQuery: 1,
+  minHitRate: 0.8
+};
 
 function resolveWorkspacePath(workspaceRoot, relativePath) {
   return path.join(workspaceRoot, relativePath);
@@ -205,6 +212,174 @@ function graphStats(workspaceRoot = WORKSPACE_ROOT) {
   };
 }
 
+function fileMetric(workspaceRoot, relativePath) {
+  const content = fs.readFileSync(resolveWorkspacePath(workspaceRoot, relativePath), "utf8");
+  return {
+    path: relativePath,
+    bytes: Buffer.byteLength(content),
+    tokenProxy: Math.ceil(Buffer.byteLength(content) / 4)
+  };
+}
+
+function aggregateFileMetrics(workspaceRoot, files) {
+  const uniqueFiles = [...new Set(files)].filter((file) => fs.existsSync(resolveWorkspacePath(workspaceRoot, file)));
+  const metrics = uniqueFiles.map((file) => fileMetric(workspaceRoot, file));
+  return {
+    fileCount: metrics.length,
+    bytes: metrics.reduce((sum, entry) => sum + entry.bytes, 0),
+    tokenProxy: metrics.reduce((sum, entry) => sum + entry.tokenProxy, 0),
+    files: metrics
+  };
+}
+
+function listFilesRecursive(workspaceRoot, relativeDir) {
+  const absoluteDir = resolveWorkspacePath(workspaceRoot, relativeDir);
+  if (!fs.existsSync(absoluteDir)) {
+    return [];
+  }
+
+  const entries = fs.readdirSync(absoluteDir, { withFileTypes: true });
+  return entries.flatMap((entry) => {
+    const relativePath = toPosixPath(path.join(relativeDir, entry.name));
+    if (entry.isDirectory()) {
+      return listFilesRecursive(workspaceRoot, relativePath);
+    }
+    if (entry.isFile()) {
+      return [relativePath];
+    }
+    return [];
+  });
+}
+
+function defaultCoverageQueries() {
+  return [
+    { q: "PAM", expectedId: "project:pam" },
+    { q: "runtime guide", expectedId: "doc:runtime" },
+    { q: "graph cli", expectedId: "tool:graph" },
+    { q: "markdown migration", expectedId: "migration:markdown-to-graph-v1" },
+    { q: "agent-facing runbooks", expectedId: "principle:agent-facing-runbooks" }
+  ];
+}
+
+function readCoverageScenario(workspaceRoot, scenarioPath) {
+  const absolutePath = resolveWorkspacePath(workspaceRoot, scenarioPath);
+  if (!fs.existsSync(absolutePath)) {
+    return {
+      path: scenarioPath,
+      queries: defaultCoverageQueries()
+    };
+  }
+
+  const scenario = JSON.parse(fs.readFileSync(absolutePath, "utf8"));
+  if (!Array.isArray(scenario.queries)) {
+    throw new Error(`Coverage scenario must include a queries array: ${scenarioPath}`);
+  }
+  return {
+    path: scenarioPath,
+    name: scenario.name,
+    queries: scenario.queries
+  };
+}
+
+function collectFileOnlyCoverage(workspaceRoot = WORKSPACE_ROOT, options = {}) {
+  const graph = loadGraph(workspaceRoot);
+  const validation = validateGraph(graph);
+  const scenario = readCoverageScenario(workspaceRoot, options.scenario ?? DEFAULT_COVERAGE_SCENARIO);
+  const budget = {
+    maxCoreFiles: options.maxCoreFiles ?? DEFAULT_FILE_ONLY_BUDGET.maxCoreFiles,
+    maxCoreBytes: options.maxCoreBytes ?? DEFAULT_FILE_ONLY_BUDGET.maxCoreBytes,
+    maxSourceFilesPerQuery: options.maxSourceFilesPerQuery ?? DEFAULT_FILE_ONLY_BUDGET.maxSourceFilesPerQuery,
+    minHitRate: options.minHitRate ?? DEFAULT_FILE_ONLY_BUDGET.minHitRate
+  };
+  const coreFiles = [
+    "memory/pam.version.json",
+    `${GRAPH_DIR}/catalog.json`,
+    `${GRAPH_DIR}/aliases.jsonl`,
+    `${GRAPH_DIR}/nodes.jsonl`,
+    `${GRAPH_DIR}/edges.jsonl`
+  ];
+  const corpusFiles = [
+    "AGENT_BOOTSTRAP.md",
+    "README.md",
+    ...listFilesRecursive(workspaceRoot, "memory").filter((file) => /\.(json|jsonl|md)$/i.test(file))
+  ];
+  const coreRead = aggregateFileMetrics(workspaceRoot, coreFiles);
+  const corpusRead = aggregateFileMetrics(workspaceRoot, corpusFiles);
+  const nodeById = new Map(graph.nodes.map((node) => [node.id, node]));
+
+  const queryResults = scenario.queries.map((entry) => {
+    const query = entry.q ?? entry.query ?? "";
+    const expectedId = entry.expectedId ?? null;
+    const result = queryGraph(graph, { query, limit: 3 });
+    const resultIds = result.results.map((node) => node.id);
+    const topResult = result.results[0] ?? null;
+    const expectedNode = expectedId ? nodeById.get(expectedId) : null;
+    const targetSources = expectedNode ? [expectedNode.src] : result.results.map((node) => node.src);
+    const sourceRead = aggregateFileMetrics(workspaceRoot, targetSources.slice(0, budget.maxSourceFilesPerQuery));
+    const expectedMatched = expectedId ? resultIds.includes(expectedId) : resultIds.length > 0;
+    const topMatched = expectedId ? topResult?.id === expectedId : Boolean(topResult);
+    const status = topMatched ? "PASS" : expectedMatched ? "PARTIAL" : "BLOCKED";
+
+    return {
+      query,
+      expectedId,
+      aliasResolvedTo: result.aliasResolvedTo,
+      resultIds,
+      topId: topResult?.id ?? null,
+      status,
+      sourceRead,
+      notes: {
+        opensRawSourceText: false,
+        candidateSourceCount: new Set(result.results.map((node) => node.src)).size
+      }
+    };
+  });
+
+  const passCount = queryResults.filter((entry) => entry.status === "PASS").length;
+  const partialCount = queryResults.filter((entry) => entry.status === "PARTIAL").length;
+  const blockedCount = queryResults.filter((entry) => entry.status === "BLOCKED").length;
+  const hitRate = queryResults.length === 0 ? 0 : passCount / queryResults.length;
+  const coreBudgetOk = coreRead.fileCount <= budget.maxCoreFiles && coreRead.bytes <= budget.maxCoreBytes;
+  const sourceBudgetOk = queryResults.every((entry) => entry.sourceRead.fileCount <= budget.maxSourceFilesPerQuery);
+  const ok = validation.ok && coreBudgetOk && sourceBudgetOk && hitRate >= budget.minHitRate;
+
+  return {
+    coverageVersion: 1,
+    generatedAt: options.generatedAt ?? new Date().toISOString(),
+    privacy: {
+      aggregateOnly: true,
+      rawTextIncluded: false,
+      absolutePathsIncluded: false
+    },
+    scenario: {
+      path: scenario.path,
+      name: scenario.name ?? null,
+      queryCount: queryResults.length
+    },
+    budget,
+    graph: {
+      nodeCount: graph.nodes.length,
+      edgeCount: graph.edges.length,
+      aliasCount: graph.aliases.length,
+      valid: validation.ok
+    },
+    readVolume: {
+      pamFirstCore: coreRead,
+      corpusFirst: corpusRead
+    },
+    results: queryResults,
+    summary: {
+      ok,
+      passCount,
+      partialCount,
+      blockedCount,
+      hitRate,
+      coreBudgetOk,
+      sourceBudgetOk
+    }
+  };
+}
+
 function parseArgs(argv) {
   const args = [...argv];
   const command = args.shift() ?? "validate";
@@ -222,6 +397,18 @@ function parseArgs(argv) {
       options.relation = args.shift() ?? "";
     } else if (arg === "--limit") {
       options.limit = Number(args.shift() ?? "10");
+    } else if (arg === "--scenario") {
+      options.scenario = args.shift();
+    } else if (arg === "--max-files") {
+      options.maxCoreFiles = Number(args.shift() ?? DEFAULT_FILE_ONLY_BUDGET.maxCoreFiles);
+    } else if (arg === "--max-bytes") {
+      options.maxCoreBytes = Number(args.shift() ?? DEFAULT_FILE_ONLY_BUDGET.maxCoreBytes);
+    } else if (arg === "--max-source-files") {
+      options.maxSourceFilesPerQuery = Number(args.shift() ?? DEFAULT_FILE_ONLY_BUDGET.maxSourceFilesPerQuery);
+    } else if (arg === "--min-hit-rate") {
+      options.minHitRate = Number(args.shift() ?? DEFAULT_FILE_ONLY_BUDGET.minHitRate);
+    } else if (arg === "--generated-at") {
+      options.generatedAt = args.shift();
     }
   }
 
@@ -238,6 +425,7 @@ function print(data, json = false) {
 
 export {
   buildCatalog,
+  collectFileOnlyCoverage,
   graphStats,
   loadGraph,
   queryGraph,
@@ -263,6 +451,15 @@ function main() {
 
   if (options.command === "stats") {
     print(graphStats(), options.json);
+    return;
+  }
+
+  if (options.command === "coverage") {
+    const result = collectFileOnlyCoverage(WORKSPACE_ROOT, options);
+    print(result, options.json);
+    if (!result.summary.ok) {
+      process.exitCode = 1;
+    }
     return;
   }
 
