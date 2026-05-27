@@ -1,5 +1,5 @@
 {
-  "pamVersion": "0.3.0",
+  "pamVersion": "0.3.1",
   "memoryFormat": "graph-v1",
   "graphSchemaVersion": "pam-graph-v1",
   "features": {
@@ -7,7 +7,8 @@
     "markdownLogs": true,
     "versionAwareMigration": true,
     "openClawSpecialization": true,
-    "installationAcceptanceCriteria": true
+    "installationAcceptanceCriteria": true,
+    "migrationEnforcement": true
   },
-  "updated": "2026-05-08"
+  "updated": "2026-05-27"
 }

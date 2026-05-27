@@ -2,6 +2,32 @@
 
 ## Unreleased
 
+## 0.3.1 - 2026-05-27
+
+PAM 0.3.1 adds automated semantic migration enforcement. The graph schema
+remains `pam-graph-v1`; this release adds a policy/tooling migration so future
+operational, runtime, agent, graph, and tool changes must declare a versioned
+migration path.
+
+### Added
+
+- Migration enforcement command: `npm run migrations:check`.
+- CI-friendly checks for:
+  - matching `package.json` and `memory/pam.version.json` versions;
+  - valid semver migration filenames;
+  - one-step patch/minor/major migration transitions;
+  - contiguous migration chains from the base version to the target version;
+  - migration-sensitive changes without a PAM version bump.
+- Migration-sensitive path policy for PAM runtime/tooling, graph files, agent
+  instructions, OpenClaw operational docs, and package metadata.
+- Test coverage for semantic migration path validation.
+
+### Compatibility
+
+- `memoryFormat` remains `graph-v1`.
+- `graphSchemaVersion` remains `pam-graph-v1`.
+- Existing 0.3.0 graph JSONL files remain valid.
+
 ## 0.3.0 - 2026-05-08
 
 PAM 0.3.0 adds an OpenClaw specialization profile and makes installation
