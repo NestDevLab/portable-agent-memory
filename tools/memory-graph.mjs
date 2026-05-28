@@ -222,13 +222,17 @@ function fileMetric(workspaceRoot, relativePath) {
 }
 
 function aggregateFileMetrics(workspaceRoot, files) {
-  const uniqueFiles = [...new Set(files)].filter((file) => fs.existsSync(resolveWorkspacePath(workspaceRoot, file)));
-  const metrics = uniqueFiles.map((file) => fileMetric(workspaceRoot, file));
+  const uniqueFiles = [...new Set(files)].filter(Boolean);
+  const existingFiles = uniqueFiles.filter((file) => fs.existsSync(resolveWorkspacePath(workspaceRoot, file)));
+  const missingFiles = uniqueFiles.filter((file) => !fs.existsSync(resolveWorkspacePath(workspaceRoot, file)));
+  const metrics = existingFiles.map((file) => fileMetric(workspaceRoot, file));
   return {
     fileCount: metrics.length,
+    missingFileCount: missingFiles.length,
     bytes: metrics.reduce((sum, entry) => sum + entry.bytes, 0),
     tokenProxy: metrics.reduce((sum, entry) => sum + entry.tokenProxy, 0),
-    files: metrics
+    files: metrics,
+    missingFiles
   };
 }
 
@@ -305,7 +309,6 @@ function collectFileOnlyCoverage(workspaceRoot = WORKSPACE_ROOT, options = {}) {
   ];
   const coreRead = aggregateFileMetrics(workspaceRoot, coreFiles);
   const corpusRead = aggregateFileMetrics(workspaceRoot, corpusFiles);
-  const nodeById = new Map(graph.nodes.map((node) => [node.id, node]));
 
   const queryResults = scenario.queries.map((entry) => {
     const query = entry.q ?? entry.query ?? "";
@@ -313,12 +316,12 @@ function collectFileOnlyCoverage(workspaceRoot = WORKSPACE_ROOT, options = {}) {
     const result = queryGraph(graph, { query, limit: 3 });
     const resultIds = result.results.map((node) => node.id);
     const topResult = result.results[0] ?? null;
-    const expectedNode = expectedId ? nodeById.get(expectedId) : null;
-    const targetSources = expectedNode ? [expectedNode.src] : result.results.map((node) => node.src);
+    const targetSources = result.results.map((node) => node.src);
     const sourceRead = aggregateFileMetrics(workspaceRoot, targetSources.slice(0, budget.maxSourceFilesPerQuery));
     const expectedMatched = expectedId ? resultIds.includes(expectedId) : resultIds.length > 0;
     const topMatched = expectedId ? topResult?.id === expectedId : Boolean(topResult);
-    const status = topMatched ? "PASS" : expectedMatched ? "PARTIAL" : "BLOCKED";
+    const sourceReadable = result.results.length === 0 || sourceRead.missingFileCount === 0;
+    const status = !sourceReadable ? "BLOCKED" : topMatched ? "PASS" : expectedMatched ? "PARTIAL" : "BLOCKED";
 
     return {
       query,
@@ -341,7 +344,9 @@ function collectFileOnlyCoverage(workspaceRoot = WORKSPACE_ROOT, options = {}) {
   const hitRate = queryResults.length === 0 ? 0 : passCount / queryResults.length;
   const coreBudgetOk = coreRead.fileCount <= budget.maxCoreFiles && coreRead.bytes <= budget.maxCoreBytes;
   const sourceBudgetOk = queryResults.every((entry) => entry.sourceRead.fileCount <= budget.maxSourceFilesPerQuery);
-  const ok = validation.ok && coreBudgetOk && sourceBudgetOk && hitRate >= budget.minHitRate;
+  const missingSourceCount = queryResults.reduce((sum, entry) => sum + entry.sourceRead.missingFileCount, 0);
+  const sourceFilesOk = missingSourceCount === 0;
+  const ok = validation.ok && coreBudgetOk && sourceBudgetOk && sourceFilesOk && hitRate >= budget.minHitRate;
 
   return {
     coverageVersion: 1,
@@ -375,7 +380,9 @@ function collectFileOnlyCoverage(workspaceRoot = WORKSPACE_ROOT, options = {}) {
       blockedCount,
       hitRate,
       coreBudgetOk,
-      sourceBudgetOk
+      sourceBudgetOk,
+      sourceFilesOk,
+      missingSourceCount
     }
   };
 }

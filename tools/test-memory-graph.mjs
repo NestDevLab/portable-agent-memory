@@ -174,3 +174,85 @@ test("file-only coverage classifies missing expected nodes as blocked", () => {
   assert.equal(coverage.summary.blockedCount, 1);
   assert.equal(coverage.results[0].status, "BLOCKED");
 });
+
+test("file-only coverage blocks matched nodes with missing source files", () => {
+  const root = makeGraphWorkspace();
+  fs.mkdirSync(path.join(root, "benchmarks"), { recursive: true });
+  fs.writeFileSync(
+    path.join(root, "memory", "pam.version.json"),
+    '{"pamVersion":"0.4.0","memoryFormat":"graph-v1","graphSchemaVersion":"pam-graph-v1"}\n',
+    "utf8"
+  );
+  fs.writeFileSync(
+    path.join(root, "memory", "graph", "catalog.json"),
+    JSON.stringify(buildCatalog(root, { generatedAt: "2026-05-05T00:00:00.000Z" })) + "\n",
+    "utf8"
+  );
+  fs.writeFileSync(path.join(root, "README.md"), "Portable Agent Memory test corpus.\n", "utf8");
+  fs.writeFileSync(path.join(root, "AGENT_BOOTSTRAP.md"), "Bootstrap instructions for tests.\n", "utf8");
+  fs.writeFileSync(
+    path.join(root, "benchmarks", "file-only-coverage.json"),
+    JSON.stringify({
+      queries: [
+        {
+          q: "graph cli",
+          expectedId: "tool:graph"
+        }
+      ]
+    }) + "\n",
+    "utf8"
+  );
+
+  const coverage = collectFileOnlyCoverage(root, {
+    scenario: "benchmarks/file-only-coverage.json",
+    generatedAt: "2026-05-05T00:00:00.000Z"
+  });
+
+  assert.equal(coverage.summary.ok, false);
+  assert.equal(coverage.summary.blockedCount, 1);
+  assert.equal(coverage.summary.missingSourceCount, 1);
+  assert.equal(coverage.summary.sourceFilesOk, false);
+  assert.equal(coverage.results[0].status, "BLOCKED");
+  assert.deepEqual(coverage.results[0].sourceRead.missingFiles, ["tools/memory-graph.mjs"]);
+});
+
+test("file-only coverage reads returned candidate sources instead of expected target sources", () => {
+  const root = makeGraphWorkspace();
+  fs.mkdirSync(path.join(root, "benchmarks"), { recursive: true });
+  fs.mkdirSync(path.join(root, "tools"), { recursive: true });
+  fs.writeFileSync(
+    path.join(root, "memory", "pam.version.json"),
+    '{"pamVersion":"0.4.0","memoryFormat":"graph-v1","graphSchemaVersion":"pam-graph-v1"}\n',
+    "utf8"
+  );
+  fs.writeFileSync(
+    path.join(root, "memory", "graph", "catalog.json"),
+    JSON.stringify(buildCatalog(root, { generatedAt: "2026-05-05T00:00:00.000Z" })) + "\n",
+    "utf8"
+  );
+  fs.writeFileSync(path.join(root, "README.md"), "Portable Agent Memory test corpus.\n", "utf8");
+  fs.writeFileSync(path.join(root, "AGENT_BOOTSTRAP.md"), "Bootstrap instructions for tests.\n", "utf8");
+  fs.writeFileSync(path.join(root, "tools", "memory-graph.mjs"), "console.log('graph cli');\n", "utf8");
+  fs.writeFileSync(
+    path.join(root, "benchmarks", "file-only-coverage.json"),
+    JSON.stringify({
+      queries: [
+        {
+          q: "graph cli",
+          expectedId: "project:pam"
+        }
+      ]
+    }) + "\n",
+    "utf8"
+  );
+
+  const coverage = collectFileOnlyCoverage(root, {
+    scenario: "benchmarks/file-only-coverage.json",
+    generatedAt: "2026-05-05T00:00:00.000Z"
+  });
+
+  assert.equal(coverage.summary.ok, false);
+  assert.equal(coverage.results[0].status, "BLOCKED");
+  assert.equal(coverage.results[0].topId, "tool:graph");
+  assert.equal(coverage.results[0].sourceRead.files[0].path, "tools/memory-graph.mjs");
+});
