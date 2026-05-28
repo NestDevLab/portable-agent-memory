@@ -262,5 +262,10 @@ function main() {
 }
 
 if (process.argv[1] === __filename) {
-  main();
+  try {
+    main();
+  } catch (error) {
+    process.stderr.write(`${error instanceof Error ? error.message : String(error)}\n`);
+    process.exitCode = 1;
+  }
 }
