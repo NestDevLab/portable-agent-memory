@@ -28,6 +28,56 @@ The deterministic token fields are proxy metrics, not provider-reported token
 usage. Real answer quality and exact token usage require an authenticated LLM
 command.
 
+## Results snapshot
+
+These sample results were produced on the repository fixture with seven
+retrieval queries. Deterministic token proxies estimate `bytes / 4`; real token
+usage is provider-reported Codex JSONL usage from an authenticated local run.
+
+| Mode | Queries | Prompt token proxy | Read token proxy | Real input tokens | Node hit rate | Token proxy reduction vs none | Real input reduction vs none |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| `none` | 7 | 102,238 | 101,339 | 235,003 | 0% | 0% | 0% |
+| `pam-0.4` | 7 | 37,041 | 35,296 | 182,236 | 100% | 63.77% | 22.45% |
+| `pam-0.5` | 7 | 38,126 | 36,304 | 183,412 | 100% | 62.71% | 21.95% |
+
+The proxy reduction is larger than the real Codex reduction because the proxy
+only models repository context. The real Codex run also includes fixed session,
+tool, policy, and instruction overhead that PAM cannot remove.
+
+On this small fixture, `pam-0.5` is slightly more expensive than `pam-0.4` for
+retrieval because it includes file-only coverage expectations. That is expected:
+the 0.5.x improvement is mostly about collecting and verifying more usable
+knowledge, not shrinking every single retrieval context.
+
+| Persisted knowledge | `pam-0.4` | `pam-0.5` | Change |
+| --- | ---: | ---: | ---: |
+| Structured records | 48 | 53 | +10.42% |
+| Artifact bytes | 8,090 | 8,665 | +7.11% |
+| Token proxy | 2,024 | 2,168 | +7.11% |
+| Coverage queries | 0 | 5 | +5 |
+| Token proxy per record | 42.17 | 40.91 | -2.99% |
+
+The small fixture is intentionally conservative. It proves the benchmark can
+report the new persisted-knowledge fields, but it does not show the historical
+failure mode where 0.4-style collection misses most of a larger corpus.
+
+The synthetic large-corpus benchmark models that collection gap directly:
+
+| Large corpus mode | Source files | Total facts | Captured facts | Capture rate | Persisted token proxy | Records | Graph-first reduction vs corpus |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| `pam-0.4` | 500 | 2,000 | 160 | 8% | 17,113 | 479 | 92.65% |
+| `pam-0.5` | 500 | 2,000 | 1,840 | 92% | 241,367 | 7,359 | -3.66% |
+
+| Large corpus comparison | Value |
+| --- | ---: |
+| Facts captured by 0.5 per 0.4 fact | 11.5x |
+| Persisted token proxy increase | 1,310.43% |
+
+This is the key tradeoff: a graph that captures almost nothing is compact but
+not useful. A graph that captures and verifies the corpus can be much larger,
+especially when coverage queries are stored, but it makes the knowledge
+available to later retrieval and validation.
+
 Persisted knowledge fields compare the amount of structured retrieval
 information saved by each PAM mode:
 
