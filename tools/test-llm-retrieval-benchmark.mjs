@@ -34,3 +34,16 @@ test("PAM retrieval modes resolve expected graph nodes", () => {
   assert.equal(report.summaries["pam-0.4"].expectedNodeHitRate, 100);
   assert.equal(report.summaries["pam-0.5"].expectedNodeHitRate, 100);
 });
+
+test("LLM retrieval benchmark compares persisted PAM knowledge artifacts", () => {
+  const report = collectLlmRetrievalBenchmark({
+    generatedAt: "2026-06-02T00:00:00.000Z"
+  });
+  assert.equal(report.persistedKnowledge.none.totalStructuredRecords, 0);
+  assert.equal(report.persistedKnowledge["pam-0.4"].recordCounts.coverageQueries, 0);
+  assert.ok(report.persistedKnowledge["pam-0.4"].recordCounts.nodes > 0);
+  assert.ok(report.persistedKnowledge["pam-0.4"].recordCounts.edges > 0);
+  assert.ok(report.persistedKnowledge["pam-0.5"].recordCounts.coverageQueries > 0);
+  assert.ok(report.persistedKnowledge["pam-0.5"].totalStructuredRecords > report.persistedKnowledge["pam-0.4"].totalStructuredRecords);
+  assert.ok(report.persistedKnowledgeComparison.structuredRecordIncreasePercent > 0);
+});

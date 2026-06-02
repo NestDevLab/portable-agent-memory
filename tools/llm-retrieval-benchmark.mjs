@@ -27,6 +27,7 @@ const MARKDOWN_MEMORY_FILES = [
   "memory/agent-memory/llm-wiki.md",
   "memory/agent-memory/pam-runtime.md"
 ];
+const FILE_ONLY_COVERAGE_FILES = ["benchmarks/file-only-coverage.json"];
 const SENSITIVE_RE = /(secret|cookie|credential|private[_-]?key|authorization|bearer|access[_-]?token|refresh[_-]?token)/i;
 const ABSOLUTE_PRIVATE_PATH_RE = /\/home\/|\/Users\/|[A-Za-z]:\\/;
 
@@ -68,6 +69,76 @@ function aggregateFiles(files) {
 
 function tokenProxy(value) {
   return Math.ceil(Buffer.byteLength(String(value ?? "")) / 4);
+}
+
+function readJson(relativePath) {
+  return JSON.parse(readText(relativePath));
+}
+
+function readJsonl(relativePath) {
+  if (!fileExists(relativePath)) {
+    return [];
+  }
+  return readText(relativePath)
+    .split(/\n/)
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line) => JSON.parse(line));
+}
+
+function countUnique(values) {
+  return new Set(values.filter(Boolean)).size;
+}
+
+function persistedKnowledgeSnapshot(mode) {
+  if (mode === "none") {
+    return {
+      mode,
+      description: "No PAM graph or coverage artifacts are used.",
+      files: aggregateFiles([]),
+      recordCounts: {
+        aliases: 0,
+        nodes: 0,
+        edges: 0,
+        coverageQueries: 0
+      },
+      uniqueSourceRefs: 0,
+      totalStructuredRecords: 0,
+      tokenProxyPerStructuredRecord: 0
+    };
+  }
+
+  const files = mode === "pam-0.5" ? [...GRAPH_FILES, ...FILE_ONLY_COVERAGE_FILES] : GRAPH_FILES;
+  const aliases = readJsonl("memory/graph/aliases.jsonl");
+  const nodes = readJsonl("memory/graph/nodes.jsonl");
+  const edges = readJsonl("memory/graph/edges.jsonl");
+  const coverageQueries = mode === "pam-0.5" && fileExists("benchmarks/file-only-coverage.json")
+    ? readJson("benchmarks/file-only-coverage.json").queries ?? []
+    : [];
+  const totalStructuredRecords = aliases.length + nodes.length + edges.length + coverageQueries.length;
+  const fileMetrics = aggregateFiles(files);
+
+  return {
+    mode,
+    description: mode === "pam-0.5"
+      ? "PAM graph plus the file-only coverage scenario introduced in 0.5.x."
+      : "PAM graph artifacts available in 0.4.x.",
+    files: fileMetrics,
+    recordCounts: {
+      aliases: aliases.length,
+      nodes: nodes.length,
+      edges: edges.length,
+      coverageQueries: coverageQueries.length
+    },
+    uniqueSourceRefs: countUnique([
+      ...nodes.map((node) => node.src),
+      ...edges.map((edge) => edge.src)
+    ]),
+    totalStructuredRecords,
+    tokenProxyPerStructuredRecord: totalStructuredRecords === 0
+      ? 0
+      : Math.round((fileMetrics.tokenProxy / totalStructuredRecords) * 100) / 100
+  };
 }
 
 function readScenario(relativePath = DEFAULT_SCENARIO) {
@@ -178,6 +249,13 @@ function percentReduction(before, after) {
   return Math.round((1 - after / before) * 10000) / 100;
 }
 
+function percentIncrease(before, after) {
+  if (!before) {
+    return after ? 100 : 0;
+  }
+  return Math.round(((after / before) - 1) * 10000) / 100;
+}
+
 function summarizeMode(mode, results, noneSummary = null) {
   const queryCount = results.length;
   const readBytes = results.reduce((sum, entry) => sum + entry.readVolume.bytes, 0);
@@ -254,6 +332,19 @@ function collectLlmRetrievalBenchmark(options = {}) {
   for (const mode of modes) {
     summaries[mode] = summarizeMode(mode, modeResults[mode], summaries.none ?? null);
   }
+  const persistedKnowledge = Object.fromEntries(
+    modes.map((mode) => [mode, persistedKnowledgeSnapshot(mode)])
+  );
+  const persistedKnowledgeComparison = persistedKnowledge["pam-0.4"] && persistedKnowledge["pam-0.5"]
+    ? {
+        from: "pam-0.4",
+        to: "pam-0.5",
+        byteIncreasePercent: percentIncrease(persistedKnowledge["pam-0.4"].files.bytes, persistedKnowledge["pam-0.5"].files.bytes),
+        tokenProxyIncreasePercent: percentIncrease(persistedKnowledge["pam-0.4"].files.tokenProxy, persistedKnowledge["pam-0.5"].files.tokenProxy),
+        structuredRecordIncreasePercent: percentIncrease(persistedKnowledge["pam-0.4"].totalStructuredRecords, persistedKnowledge["pam-0.5"].totalStructuredRecords),
+        addedCoverageQueries: persistedKnowledge["pam-0.5"].recordCounts.coverageQueries - persistedKnowledge["pam-0.4"].recordCounts.coverageQueries
+      }
+    : null;
 
   const report = {
     benchmarkVersion: 1,
@@ -277,6 +368,8 @@ function collectLlmRetrievalBenchmark(options = {}) {
       privatePathsIncluded: false
     },
     summaries,
+    persistedKnowledge,
+    persistedKnowledgeComparison,
     results: modeResults
   };
 
@@ -339,6 +432,17 @@ function printHuman(report) {
       `answered=${summary.llmAnsweredCount}/${summary.queryCount}`,
       `tokenReductionVsNone=${summary.tokenProxyReductionVsNone}%`,
       `readReductionVsNone=${summary.readVolumeReductionVsNone}%`
+    ].join(" "));
+    process.stdout.write("\n");
+  }
+  if (report.persistedKnowledgeComparison) {
+    const comparison = report.persistedKnowledgeComparison;
+    process.stdout.write([
+      "persistedKnowledge pam-0.4->pam-0.5:",
+      `byteIncrease=${comparison.byteIncreasePercent}%`,
+      `tokenProxyIncrease=${comparison.tokenProxyIncreasePercent}%`,
+      `recordIncrease=${comparison.structuredRecordIncreasePercent}%`,
+      `addedCoverageQueries=${comparison.addedCoverageQueries}`
     ].join(" "));
     process.stdout.write("\n");
   }

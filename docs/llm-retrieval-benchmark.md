@@ -19,7 +19,21 @@ The benchmark reports:
 - expected graph node hits;
 - expected-term hits in the LLM answer;
 - deterministic token/read-volume reduction versus `none`;
+- persisted PAM knowledge size and density for `pam-0.4` versus `pam-0.5`;
 - privacy status: aggregate metrics only, no raw source text in reports.
+
+The deterministic token fields are proxy metrics, not provider-reported token
+usage. Real answer quality and exact token usage require an authenticated LLM
+command.
+
+Persisted knowledge fields compare the amount of structured retrieval
+information saved by each PAM mode:
+
+- graph artifact bytes and token proxy;
+- alias, node, edge, and coverage-query counts;
+- unique source references;
+- token proxy per structured record;
+- 0.4 to 0.5 growth percentages.
 
 ## Running deterministic mode
 
@@ -60,6 +74,10 @@ For a full release comparison:
    - `expectedTermHitRate`;
    - `llmAnsweredCount`;
    - `durationMs`.
+5. Compare persisted knowledge fields:
+   - `persistedKnowledge.pam-0.4`;
+   - `persistedKnowledge.pam-0.5`;
+   - `persistedKnowledgeComparison`.
 
 Keep the same model, temperature, prompt scenario, repository checkout, and
 machine where possible. If the provider exposes exact token usage, record it
