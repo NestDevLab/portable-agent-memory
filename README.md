@@ -57,6 +57,9 @@ The important pieces are:
 - [tools/memory-maintenance.mjs](tools/memory-maintenance.mjs): optional
   maintenance CLI for rotating logs, rebuilding archive indexes, and refreshing
   summaries.
+- [benchmarks/file-only-coverage.json](benchmarks/file-only-coverage.json):
+  default smoke scenario for testing graph-first retrieval with file-only
+  agents.
 
 ## Who It Is For
 
@@ -224,6 +227,7 @@ Commands:
 ```bash
 npm test
 npm run memory:graph:validate
+npm run memory:graph:coverage -- --json
 npm run memory:graph:query -- --q PAM --json
 npm run memory:detect -- --json
 npm run benchmark:current
@@ -259,6 +263,28 @@ The optional `memory:graph:*` scripts validate and query this data, but agents
 can also use plain text search or any JSONL parser. Node is not required to read
 or manually update the memory.
 
+### File-Only Coverage
+
+PAM 0.5.0 adds a file-only coverage check for agents that do not have semantic
+memory search. It compares the graph-first read path against a broad corpus
+scan and verifies that realistic queries resolve through aliases/nodes before
+opening long source files.
+
+```bash
+npm run memory:graph:coverage -- --json
+```
+
+The default budget is:
+
+- maximum 5 graph files before source fallback;
+- maximum 100 KB before source fallback;
+- maximum 1 targeted source file per query;
+- at least 80% `PASS` results in the scenario.
+
+Add project-specific queries to a JSON scenario and pass it with
+`--scenario <path>`. The coverage output is aggregate-only: it reports paths,
+byte counts, statuses, and node ids, not raw source text.
+
 ## Benchmarks
 
 The benchmark tool records aggregate public metrics only: file counts, bytes,
@@ -289,6 +315,17 @@ npm run benchmark:compare -- --before benchmarks/baselines/pam-0.1.0-markdown.js
 The benchmark is a read-volume proxy, not a model billing report. It estimates
 the amount of text an agent needs to inspect for the same generic memory lookup
 path before and after graph-v1.
+
+## OpenClaw Daily Graph Maintenance
+
+For OpenClaw-style workspaces, recurring PAM maintenance should keep the graph
+useful as a compact knowledge map. It should validate the graph, scan recent
+durable memory, promote safe source-traced records, update the catalog, and
+write a concise maintenance report.
+
+It should not be only an installation acceptance-criteria checklist. See
+[docs/openclaw-daily-graph-maintenance.md](docs/openclaw-daily-graph-maintenance.md)
+for the reusable runbook.
 
 ## Maintenance Safety Model
 

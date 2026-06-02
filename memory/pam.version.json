@@ -1,5 +1,5 @@
 {
-  "pamVersion": "0.4.0",
+  "pamVersion": "0.5.0",
   "memoryFormat": "graph-v1",
   "graphSchemaVersion": "pam-graph-v1",
   "features": {
@@ -12,7 +12,8 @@
     "mcpServer": true,
     "subagentCurator": true,
     "subagentScribe": true,
-    "proposalApply": true
+    "proposalApply": true,
+    "fileOnlyCoverage": true
   },
-  "updated": "2026-05-28"
+  "updated": "2026-05-27"
 }
