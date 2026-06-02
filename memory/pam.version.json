@@ -1,5 +1,5 @@
 {
-  "pamVersion": "0.3.1",
+  "pamVersion": "0.4.0",
   "memoryFormat": "graph-v1",
   "graphSchemaVersion": "pam-graph-v1",
   "features": {
@@ -8,7 +8,11 @@
     "versionAwareMigration": true,
     "openClawSpecialization": true,
     "installationAcceptanceCriteria": true,
-    "migrationEnforcement": true
+    "migrationEnforcement": true,
+    "mcpServer": true,
+    "subagentCurator": true,
+    "subagentScribe": true,
+    "proposalApply": true
   },
-  "updated": "2026-05-27"
+  "updated": "2026-05-28"
 }

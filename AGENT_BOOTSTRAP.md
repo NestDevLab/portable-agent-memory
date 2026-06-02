@@ -124,6 +124,88 @@ assuming Codex. The command may be Codex, Claude CLI, OpenClaw, Ollama, a local
 script, or any other agent command that can work from a temporary workspace.
 ```
 
+## Optional Agent Layer (Claude Code Plugin)
+
+For Claude Code users, PAM ships as a plugin that bundles the MCP server,
+reference subagents (curator + scribe), slash commands (`/pam:dream`,
+`/pam:pam-status`), and lifecycle hooks. The portable markdown + JSONL contract
+is unchanged, and agents reading `memory/` by hand keep working exactly as
+before.
+
+### Install the PAM plugin (Claude Code)
+
+```text
+Install the Portable Agent Memory plugin in Claude Code.
+
+Steps:
+- run `/plugin install NestDevLab/portable-agent-memory@github`;
+- confirm `/agents` lists `curator` and `scribe` under the `pam` plugin;
+- confirm `/dream` and `/pam:pam-status` are available;
+- run `/dream` from inside a PAM workspace and confirm it returns a report.
+
+Report every step with a colored marker: 🟢 PASS, 🟡 PARTIAL, 🔵 DEFERRED,
+🔴 BLOCKED, or ⚪ N/A.
+```
+
+### Use the curator subagent
+
+```text
+Run the curator to audit this PAM workspace.
+
+Steps:
+- confirm the plugin is installed (see previous prompt);
+- invoke the subagent (`/pam:curator` in Claude Code) and ask it to audit
+  memory;
+- confirm the agent only produces a Findings report and proposal artifacts
+  under memory/maintenance/proposals/, never edits files elsewhere.
+
+The curator never auto-applies edits. Review each proposal before deciding to
+apply it (via the memory_apply_proposal MCP tool).
+
+Report every step with a colored marker: 🟢 PASS, 🟡 PARTIAL, 🔵 DEFERRED,
+🔴 BLOCKED, or ⚪ N/A.
+```
+
+### Use the scribe subagent
+
+```text
+Run the scribe at session end to record durable knowledge.
+
+Steps:
+- confirm the plugin is installed and the curator can run;
+- invoke the subagent (`/pam:scribe` in Claude Code) at session end and ask
+  it to record any durable knowledge from the conversation;
+- confirm the agent only produces a Recorded report and appends dated
+  sections to memory/knowledge-log.md or memory/conversation-log.md, never
+  edits existing entries.
+
+The scribe is append-only and cannot apply curator proposals. Use it for
+recording new facts/decisions; use the curator for hygiene.
+
+Report every step with a colored marker: 🟢 PASS, 🟡 PARTIAL, 🔵 DEFERRED,
+🔴 BLOCKED, or ⚪ N/A.
+```
+
+### Other MCP hosts (Cursor, Codex, OpenClaw, etc.)
+
+The plugin format is Claude Code-specific. For other hosts, add a stdio MCP
+server entry pointing at `tools/pam-mcp-server.mjs`. See
+[docs/mcp-server.md](docs/mcp-server.md) for host-specific snippets.
+
+### Kimi Code CLI
+
+```text
+Install PAM for Kimi Code CLI.
+
+Steps:
+- run `node tools/kimi/install-mcp.mjs --apply` from the PAM workspace root;
+- run `kimi mcp test pam` and confirm the server responds with tool names;
+- start a Kimi session in the same workspace and ask it to read `memory/pam.version.json`.
+
+Report every step with a colored marker: 🟢 PASS, 🟡 PARTIAL, 🔵 DEFERRED,
+🔴 BLOCKED, or ⚪ N/A.
+```
+
 ## Ongoing Session Closeout Prompt
 
 ```text

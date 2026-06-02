@@ -4,4 +4,7 @@ node_modules/
 .env.*
 *.log
 memory/maintenance/nightly-cron.log
+memory/.session/
+memory/maintenance/proposals/
+.claude/settings.local.json
 tmp/

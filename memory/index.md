@@ -13,8 +13,4 @@ Start here when reading this memory workspace.
 - [agent-memory/pam.md](agent-memory/pam.md) - portable memory contract for setup/protocol work.
 - [agent-memory/llm-wiki.md](agent-memory/llm-wiki.md) - persistent wiki pattern reference.
 
-## Generated
-
-- [archive/index.md](archive/index.md) - generated archive indexes.
-- [summaries/](summaries/) - generated summaries.
-- [maintenance/](maintenance/) - maintenance reports and run manifests.
+<!-- Generated section removed 2026-05-21: archive/, summaries/, and maintenance/ are produced on demand by maintenance runs. Re-add links here once those roots contain artifacts. -->
