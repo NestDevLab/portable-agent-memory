@@ -14,6 +14,8 @@ accuracy regressions.
 The benchmark reports:
 
 - input and output token proxy, estimated as bytes / 4;
+- real provider token usage when the configured LLM command emits Codex JSONL
+  `turn.completed` usage events;
 - read volume, including file count and bytes;
 - LLM duration when a real command is configured;
 - expected graph node hits;
@@ -78,11 +80,27 @@ Set `PAM_LLM_COMMAND` to a command that reads the full prompt from stdin and
 writes the answer to stdout:
 
 ```bash
-PAM_LLM_COMMAND='codex -a never --sandbox read-only exec --ephemeral -' npm run benchmark:llm -- --json
+PAM_LLM_COMMAND='codex exec --ephemeral --json --skip-git-repo-check -' npm run benchmark:llm -- --json
 ```
 
 Any CLI can be used if it follows the stdin/stdout contract, for example Claude
 Code, OpenCode, Ollama, or a local wrapper script.
+
+If Codex is installed but the benchmark reports authentication failures, check
+which Codex home the shell is using:
+
+```bash
+codex login status
+CODEX_HOME=/path/to/logged-in/codex-home codex login status
+```
+
+Then run the benchmark with the logged-in home in the command environment:
+
+```bash
+CODEX_HOME=/path/to/logged-in/codex-home \
+PAM_LLM_COMMAND='codex exec --ephemeral --json --skip-git-repo-check -' \
+npm run benchmark:llm
+```
 
 Reports intentionally omit raw prompts and answers by default. Use
 `--include-answers` only in private local runs when answer inspection is needed.
@@ -102,6 +120,8 @@ For a full release comparison:
    - `expectedTermHitRate`;
    - `llmAnsweredCount`;
    - `durationMs`.
+   - `realInputTokens`;
+   - `realInputTokenReductionVsNone`;
 5. Compare persisted knowledge fields:
    - `persistedKnowledge.pam-0.4`;
    - `persistedKnowledge.pam-0.5`;

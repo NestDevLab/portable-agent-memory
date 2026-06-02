@@ -227,14 +227,44 @@ function runLlm(command, prompt) {
     maxBuffer: 10 * 1024 * 1024
   });
   const durationMs = Number(process.hrtime.bigint() - started) / 1_000_000;
+  const parsed = parseCodexJsonl(result.stdout ?? "");
   return {
     configured: true,
     status: result.status,
     durationMs: Math.round(durationMs * 1000) / 1000,
     stdoutBytes: Buffer.byteLength(result.stdout ?? ""),
     stderrBytes: Buffer.byteLength(result.stderr ?? ""),
-    answer: result.stdout ?? ""
+    answer: parsed.answer || result.stdout || "",
+    usage: parsed.usage
   };
+}
+
+function parseCodexJsonl(output) {
+  const parsed = {
+    answer: "",
+    usage: null
+  };
+
+  for (const line of String(output ?? "").split(/\n/)) {
+    if (!line.trim()) {
+      continue;
+    }
+    let event;
+    try {
+      event = JSON.parse(line);
+    } catch {
+      continue;
+    }
+
+    if (event?.type === "item.completed" && event.item?.type === "agent_message") {
+      parsed.answer = event.item.text ?? "";
+    }
+    if (event?.type === "turn.completed" && event.usage) {
+      parsed.usage = event.usage;
+    }
+  }
+
+  return parsed;
 }
 
 function expectedTermHits(answer, terms = []) {
@@ -266,6 +296,10 @@ function summarizeMode(mode, results, noneSummary = null) {
   const expectedTermHitCount = results.filter((entry) => entry.expectedTermHit).length;
   const llmAnsweredCount = results.filter((entry) => entry.llm.configured && entry.llm.status === 0).length;
   const durationMs = results.reduce((sum, entry) => sum + (entry.llm.durationMs ?? 0), 0);
+  const realInputTokens = results.reduce((sum, entry) => sum + (entry.llm.usage?.input_tokens ?? 0), 0);
+  const realCachedInputTokens = results.reduce((sum, entry) => sum + (entry.llm.usage?.cached_input_tokens ?? 0), 0);
+  const realOutputTokens = results.reduce((sum, entry) => sum + (entry.llm.usage?.output_tokens ?? 0), 0);
+  const realReasoningOutputTokens = results.reduce((sum, entry) => sum + (entry.llm.usage?.reasoning_output_tokens ?? 0), 0);
 
   return {
     mode,
@@ -278,6 +312,11 @@ function summarizeMode(mode, results, noneSummary = null) {
     expectedTermHitRate: queryCount === 0 ? 0 : Math.round((expectedTermHitCount / queryCount) * 10000) / 100,
     llmAnsweredCount,
     durationMs: Math.round(durationMs * 1000) / 1000,
+    realInputTokens,
+    realCachedInputTokens,
+    realOutputTokens,
+    realReasoningOutputTokens,
+    realInputTokenReductionVsNone: noneSummary ? percentReduction(noneSummary.realInputTokens, realInputTokens) : 0,
     tokenProxyReductionVsNone: noneSummary ? percentReduction(noneSummary.promptTokenProxy, promptTokenProxy) : 0,
     readVolumeReductionVsNone: noneSummary ? percentReduction(noneSummary.readTokenProxy, readTokenProxy) : 0
   };
@@ -321,7 +360,8 @@ function collectLlmRetrievalBenchmark(options = {}) {
           status: llm.status,
           durationMs: llm.durationMs,
           stdoutBytes: llm.stdoutBytes,
-          stderrBytes: llm.stderrBytes
+          stderrBytes: llm.stderrBytes,
+          usage: llm.usage ?? null
         },
         answer: options.includeAnswers ? llm.answer : undefined
       };
@@ -430,6 +470,8 @@ function printHuman(report) {
       `nodeHitRate=${summary.expectedNodeHitRate}%`,
       `termHitRate=${summary.expectedTermHitRate}%`,
       `answered=${summary.llmAnsweredCount}/${summary.queryCount}`,
+      `realInputTokens=${summary.realInputTokens}`,
+      `realInputReductionVsNone=${summary.realInputTokenReductionVsNone}%`,
       `tokenReductionVsNone=${summary.tokenProxyReductionVsNone}%`,
       `readReductionVsNone=${summary.readVolumeReductionVsNone}%`
     ].join(" "));
