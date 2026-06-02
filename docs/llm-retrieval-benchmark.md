@@ -44,6 +44,34 @@ npm run benchmark:llm
 This mode does not call an LLM. It compares the context each mode would give to
 the same LLM and checks graph routing.
 
+## Running a large synthetic corpus
+
+```bash
+npm run benchmark:large-corpus
+```
+
+This mode generates a private temporary synthetic corpus and deletes it after
+the run. It is meant to model scale effects that are hard to see in this small
+starter repository.
+
+Default fixture:
+
+- 500 markdown source files;
+- 2,000 synthetic facts;
+- PAM 0.4 captures 8% of facts;
+- PAM 0.5 captures 92% of facts and adds coverage queries.
+
+The default capture rates intentionally model the failure mode where an older
+workflow leaves most useful facts uncollected. Tune them with:
+
+```bash
+npm run benchmark:large-corpus -- --sources 1000 --facts-per-source 5 --pam04-capture-rate 0.05 --pam05-capture-rate 0.95
+```
+
+This is a scale model, not a substitute for a real migrated workspace. Use it
+to verify that report fields expose the collection gap clearly, then repeat the
+same measurements on a real corpus when available.
+
 ## Running with a real LLM
 
 Set `PAM_LLM_COMMAND` to a command that reads the full prompt from stdin and

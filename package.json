@@ -7,6 +7,7 @@
   "scripts": {
     "benchmark:compare": "node tools/memory-benchmark.mjs compare",
     "benchmark:current": "node tools/memory-benchmark.mjs current",
+    "benchmark:large-corpus": "node tools/large-corpus-benchmark.mjs",
     "benchmark:llm": "node tools/llm-retrieval-benchmark.mjs run",
     "memory:detect": "node tools/memory-migration.mjs detect",
     "memory:graph:index": "node tools/memory-graph.mjs index",
