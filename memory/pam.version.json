@@ -1,5 +1,5 @@
 {
-  "pamVersion": "0.5.1",
+  "pamVersion": "0.5.2",
   "memoryFormat": "graph-v1",
   "graphSchemaVersion": "pam-graph-v1",
   "features": {
@@ -14,7 +14,8 @@
     "subagentScribe": true,
     "proposalApply": true,
     "fileOnlyCoverage": true,
-    "llmRetrievalBenchmark": true
+    "llmRetrievalBenchmark": true,
+    "benchmarkThresholdGate": true
   },
   "updated": "2026-06-02"
 }

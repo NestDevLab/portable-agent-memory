@@ -1,12 +1,13 @@
 {
   "name": "portable-agent-memory",
-  "version": "0.5.1",
+  "version": "0.5.2",
   "private": false,
   "description": "Markdown-first portable memory, wiki, and maintenance toolkit for AI agents.",
   "type": "module",
   "scripts": {
     "benchmark:compare": "node tools/memory-benchmark.mjs compare",
     "benchmark:current": "node tools/memory-benchmark.mjs current",
+    "benchmark:check": "node tools/check-benchmark-thresholds.mjs",
     "benchmark:large-corpus": "node tools/large-corpus-benchmark.mjs",
     "benchmark:llm": "node tools/llm-retrieval-benchmark.mjs run",
     "memory:detect": "node tools/memory-migration.mjs detect",
