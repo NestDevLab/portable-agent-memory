@@ -1,0 +1,55 @@
+{
+  "name": "PAM LLM retrieval comparison",
+  "description": "Realistic prompts for comparing no-PAM, PAM 0.4.x, and PAM 0.5.x retrieval behavior with the same LLM.",
+  "queries": [
+    {
+      "id": "project-purpose",
+      "prompt": "What is Portable Agent Memory for, and what problem does it solve?",
+      "graphQuery": "PAM",
+      "expectedIds": ["project:pam"],
+      "expectedTerms": ["portable", "memory", "agent"]
+    },
+    {
+      "id": "runtime-entrypoint",
+      "prompt": "Which PAM file should an everyday agent read first for graph-first memory lookup?",
+      "graphQuery": "runtime guide",
+      "expectedIds": ["doc:runtime"],
+      "expectedTerms": ["pam-runtime", "graph-first"]
+    },
+    {
+      "id": "graph-cli",
+      "prompt": "Which tool validates and queries the PAM graph, and what can it measure?",
+      "graphQuery": "graph cli",
+      "expectedIds": ["tool:graph"],
+      "expectedTerms": ["memory-graph", "validate", "coverage"]
+    },
+    {
+      "id": "benchmark-cli",
+      "prompt": "Which benchmark tool estimates memory read-volume and token reduction?",
+      "graphQuery": "benchmark cli",
+      "expectedIds": ["tool:benchmark"],
+      "expectedTerms": ["memory-benchmark", "token"]
+    },
+    {
+      "id": "markdown-to-graph",
+      "prompt": "How should a markdown-only PAM workspace migrate to graph-v1 without losing markdown compatibility?",
+      "graphQuery": "markdown migration",
+      "expectedIds": ["migration:markdown-to-graph-v1"],
+      "expectedTerms": ["migration", "graph-v1", "markdown"]
+    },
+    {
+      "id": "pam-050-migration",
+      "prompt": "What changes when migrating from PAM 0.4.0 to 0.5.0?",
+      "graphQuery": "0.5.0 migration",
+      "expectedIds": ["migration:0.5-file-only-coverage"],
+      "expectedTerms": ["file-only", "coverage", "0.5.0"]
+    },
+    {
+      "id": "agent-runbooks",
+      "prompt": "What makes a PAM runbook agent-facing and verifiable?",
+      "graphQuery": "agent-facing runbooks",
+      "expectedIds": ["principle:agent-facing-runbooks"],
+      "expectedTerms": ["quality", "criteria", "MUST"]
+    }
+  ]
+}
