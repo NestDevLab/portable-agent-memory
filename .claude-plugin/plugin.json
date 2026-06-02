@@ -1,7 +1,7 @@
 {
   "name": "pam",
   "displayName": "Portable Agent Memory",
-  "version": "0.4.0",
+  "version": "0.5.4",
   "description": "Persistent, portable memory workspace for AI agents: graph + markdown logs, hygiene tooling, and Claude Code integration (MCP server, agents, slash commands, hooks).",
   "author": {
     "name": "Stefano Guerrini"
