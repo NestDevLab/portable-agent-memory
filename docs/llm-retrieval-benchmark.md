@@ -104,20 +104,20 @@ The CI workflow runs:
 npm run benchmark:check
 ```
 
-This is a deterministic regression gate. It fails if future changes reduce the
-benchmark below conservative minimums:
+This is a deterministic regression gate. It fails if future changes regress a
+benchmark by more than 1% from the committed baseline:
 
-| Gate | Minimum |
+| Gate | Baseline | Minimum allowed |
 | --- | ---: |
-| `pam-0.4` prompt token proxy reduction vs `none` | 50% |
-| `pam-0.5` prompt token proxy reduction vs `none` | 50% |
-| `pam-0.4` read token proxy reduction vs `none` | 50% |
-| `pam-0.5` read token proxy reduction vs `none` | 50% |
-| `pam-0.4` expected node hit rate | 100% |
-| `pam-0.5` expected node hit rate | 100% |
-| `pam-0.5` persisted coverage queries | 1 |
-| Large corpus `pam-0.5` capture rate | 80% |
-| Large corpus 0.5 facts captured per 0.4 fact | 5x |
+| `pam-0.4` prompt token proxy reduction vs `none` | 63.77% | 63.1323% |
+| `pam-0.5` prompt token proxy reduction vs `none` | 62.71% | 62.0829% |
+| `pam-0.4` read token proxy reduction vs `none` | 65.17% | 64.5183% |
+| `pam-0.5` read token proxy reduction vs `none` | 64.17% | 63.5283% |
+| `pam-0.4` expected node hit rate | 100% | 99% |
+| `pam-0.5` expected node hit rate | 100% | 99% |
+| `pam-0.5` persisted coverage queries | 5 | 4.95 |
+| Large corpus `pam-0.5` capture rate | 92% | 91.08% |
+| Large corpus 0.5 facts captured per 0.4 fact | 11.5x | 11.385x |
 
 The gate is deliberately deterministic and provider-free, so pull requests do
 not depend on external model availability, provider quota, or CI machine

@@ -15,7 +15,10 @@ test("benchmark threshold check passes with default thresholds", () => {
 test("benchmark threshold check fails when thresholds are stricter than current metrics", () => {
   const report = buildReport({
     ...DEFAULT_THRESHOLDS,
-    minPam05PromptReduction: 99
+    baselines: {
+      ...DEFAULT_THRESHOLDS.baselines,
+      pam05PromptReduction: 99
+    }
   });
 
   assert.equal(report.passed, false);

@@ -1,5 +1,5 @@
 {
-  "pamVersion": "0.5.2",
+  "pamVersion": "0.5.3",
   "memoryFormat": "graph-v1",
   "graphSchemaVersion": "pam-graph-v1",
   "features": {
@@ -15,7 +15,8 @@
     "proposalApply": true,
     "fileOnlyCoverage": true,
     "llmRetrievalBenchmark": true,
-    "benchmarkThresholdGate": true
+    "benchmarkThresholdGate": true,
+    "tightBenchmarkRegressionGate": true
   },
   "updated": "2026-06-02"
 }

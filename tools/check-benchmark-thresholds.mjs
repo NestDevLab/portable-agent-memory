@@ -1,16 +1,21 @@
 import { collectLargeCorpusBenchmark } from "./large-corpus-benchmark.mjs";
 import { collectLlmRetrievalBenchmark } from "./llm-retrieval-benchmark.mjs";
 
+const DEFAULT_BASELINES = {
+  pam04PromptReduction: 63.77,
+  pam05PromptReduction: 62.71,
+  pam04ReadReduction: 65.17,
+  pam05ReadReduction: 64.17,
+  pam04NodeHitRate: 100,
+  pam05NodeHitRate: 100,
+  pam05CoverageQueries: 5,
+  pam05CaptureRate: 92,
+  pam05FactsPerPam04Fact: 11.5
+};
+
 const DEFAULT_THRESHOLDS = {
-  minPam04PromptReduction: 50,
-  minPam05PromptReduction: 50,
-  minPam04ReadReduction: 50,
-  minPam05ReadReduction: 50,
-  minPam04NodeHitRate: 100,
-  minPam05NodeHitRate: 100,
-  minPam05CoverageQueries: 1,
-  minPam05CaptureRate: 80,
-  minPam05FactsPerPam04Fact: 5
+  maxRegressionPercent: 1,
+  baselines: { ...DEFAULT_BASELINES }
 };
 
 function parseNumber(value, fallback) {
@@ -21,29 +26,44 @@ function parseNumber(value, fallback) {
 function parseArgs(argv) {
   const options = {
     json: false,
-    thresholds: { ...DEFAULT_THRESHOLDS }
+    thresholds: {
+      ...DEFAULT_THRESHOLDS,
+      baselines: { ...DEFAULT_THRESHOLDS.baselines }
+    }
   };
   const args = [...argv];
   while (args.length > 0) {
     const arg = args.shift();
     if (arg === "--json") {
       options.json = true;
-    } else if (arg.startsWith("--min-")) {
+    } else if (arg === "--max-regression-percent") {
+      options.thresholds.maxRegressionPercent = parseNumber(
+        args.shift(),
+        options.thresholds.maxRegressionPercent
+      );
+    } else if (arg.startsWith("--baseline-")) {
       const key = arg
-        .slice(2)
+        .slice("--baseline-".length)
         .replace(/-([a-z])/g, (_, char) => char.toUpperCase());
-      options.thresholds[key] = parseNumber(args.shift(), options.thresholds[key]);
+      options.thresholds.baselines[key] = parseNumber(args.shift(), options.thresholds.baselines[key]);
     }
   }
   return options;
 }
 
-function checkAtLeast(findings, label, actual, minimum) {
+function minimumFromBaseline(baseline, maxRegressionPercent) {
+  return baseline * (1 - maxRegressionPercent / 100);
+}
+
+function checkAtLeast(findings, label, actual, baseline, maxRegressionPercent) {
+  const minimum = minimumFromBaseline(baseline, maxRegressionPercent);
   const ok = actual >= minimum;
   findings.push({
     label,
     ok,
     actual,
+    baseline,
+    maxRegressionPercent,
     minimum
   });
 }
@@ -61,55 +81,64 @@ function buildReport(thresholds) {
     findings,
     "pam-0.4 prompt token proxy reduction vs none",
     llm.summaries["pam-0.4"].tokenProxyReductionVsNone,
-    thresholds.minPam04PromptReduction
+    thresholds.baselines.pam04PromptReduction,
+    thresholds.maxRegressionPercent
   );
   checkAtLeast(
     findings,
     "pam-0.5 prompt token proxy reduction vs none",
     llm.summaries["pam-0.5"].tokenProxyReductionVsNone,
-    thresholds.minPam05PromptReduction
+    thresholds.baselines.pam05PromptReduction,
+    thresholds.maxRegressionPercent
   );
   checkAtLeast(
     findings,
     "pam-0.4 read token proxy reduction vs none",
     llm.summaries["pam-0.4"].readVolumeReductionVsNone,
-    thresholds.minPam04ReadReduction
+    thresholds.baselines.pam04ReadReduction,
+    thresholds.maxRegressionPercent
   );
   checkAtLeast(
     findings,
     "pam-0.5 read token proxy reduction vs none",
     llm.summaries["pam-0.5"].readVolumeReductionVsNone,
-    thresholds.minPam05ReadReduction
+    thresholds.baselines.pam05ReadReduction,
+    thresholds.maxRegressionPercent
   );
   checkAtLeast(
     findings,
     "pam-0.4 expected node hit rate",
     llm.summaries["pam-0.4"].expectedNodeHitRate,
-    thresholds.minPam04NodeHitRate
+    thresholds.baselines.pam04NodeHitRate,
+    thresholds.maxRegressionPercent
   );
   checkAtLeast(
     findings,
     "pam-0.5 expected node hit rate",
     llm.summaries["pam-0.5"].expectedNodeHitRate,
-    thresholds.minPam05NodeHitRate
+    thresholds.baselines.pam05NodeHitRate,
+    thresholds.maxRegressionPercent
   );
   checkAtLeast(
     findings,
     "pam-0.5 coverage query count",
     llm.persistedKnowledge["pam-0.5"].recordCounts.coverageQueries,
-    thresholds.minPam05CoverageQueries
+    thresholds.baselines.pam05CoverageQueries,
+    thresholds.maxRegressionPercent
   );
   checkAtLeast(
     findings,
     "large corpus pam-0.5 capture rate",
     largeCorpus.modes["pam-0.5"].captureRate,
-    thresholds.minPam05CaptureRate
+    thresholds.baselines.pam05CaptureRate,
+    thresholds.maxRegressionPercent
   );
   checkAtLeast(
     findings,
     "large corpus pam-0.5 facts per pam-0.4 fact",
     largeCorpus.comparison.pam05CapturedFactsPerPam04CapturedFact,
-    thresholds.minPam05FactsPerPam04Fact
+    thresholds.baselines.pam05FactsPerPam04Fact,
+    thresholds.maxRegressionPercent
   );
 
   return {
@@ -140,11 +169,14 @@ function buildReport(thresholds) {
 function printHuman(report) {
   for (const finding of report.findings) {
     const status = finding.ok ? "ok" : "fail";
-    process.stdout.write(`${status}: ${finding.label} actual=${finding.actual} minimum=${finding.minimum}\n`);
+    process.stdout.write(
+      `${status}: ${finding.label} actual=${finding.actual} baseline=${finding.baseline} minimum=${finding.minimum}\n`
+    );
   }
 }
 
 export {
+  DEFAULT_BASELINES,
   buildReport,
   DEFAULT_THRESHOLDS
 };
