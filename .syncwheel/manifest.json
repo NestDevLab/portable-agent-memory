@@ -18,12 +18,12 @@
     {
       "id": "amf-pam-contract",
       "branch": "amf/pam-contract",
-      "base": "origin/main",
+      "base": "7848d5422171f66a40249aea3b365ab23546c4a2",
       "target_remote": "origin",
       "target_branch": "main",
       "integration_branch": "main-integration",
       "commits": [
-        "fcb451285f07aab4697e1ce829472b56f4ab9b27"
+        "3dd0fade3d45439a82dccd79ef6d21381ccb58d6"
       ],
       "meta": {}
     }
