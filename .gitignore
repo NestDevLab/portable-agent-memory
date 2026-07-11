@@ -8,3 +8,10 @@ memory/.session/
 memory/maintenance/proposals/
 .claude/settings.local.json
 tmp/
+
+# syncwheel managed metadata
+.syncwheel/ledger/
+.syncwheel/profile.local.json
+.syncwheel/manifests/*.local.json
+var/syncwheel/
+# end syncwheel managed metadata
