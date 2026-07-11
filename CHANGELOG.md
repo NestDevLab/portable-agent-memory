@@ -2,6 +2,38 @@
 
 ## Unreleased
 
+## 0.6.0 - 2026-07-11
+
+PAM 0.6.0 adds the optional `amf-memory/v1` Markdown record contract for
+source-traceable, scope-aware durable memory.
+
+### Added
+
+- Zero-dependency contract-v1 frontmatter, lifecycle, scope, provenance,
+  opaque-ID, sealed-claim, RFC 3339 UTC, and canonical-path validation.
+- Safe graph-v1 node projections that never expose sealed content or identity
+  references.
+- `memory_record_validate` and `memory_propose_record` MCP tools.
+- AMF record creation through the existing proposal/apply review boundary.
+
+### Safety
+
+- Person/relationship scopes and subjects, relationship claims, and
+  confidential or restricted visibility require an `AES-256-GCM` envelope with external
+  `keyRef` and canonical AAD hash.
+- Proposal and apply enforce ancestor symlink rejection, no-follow reads,
+  revision/base-hash transitions, per-target locking, archive reservation,
+  recoverable atomic persistence, supersedes resolution, and real graph collision checks.
+- Stale derived-graph warnings survive proposal, archive, and apply responses
+  with an explicit required graph-reindex follow-up.
+- MCP never decrypts records and never creates a canonical record directly.
+
+### Compatibility
+
+- `memoryFormat` and `graphSchemaVersion` remain `graph-v1` and
+  `pam-graph-v1`.
+- Existing logs, graphs, proposals, and MCP tools continue unchanged.
+
 ## 0.5.0 - 2026-05-27
 
 PAM 0.5.0 adds a measurable file-only retrieval gate for agents that cannot use

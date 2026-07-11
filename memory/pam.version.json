@@ -1,5 +1,5 @@
 {
-  "pamVersion": "0.5.3",
+  "pamVersion": "0.6.0",
   "memoryFormat": "graph-v1",
   "graphSchemaVersion": "pam-graph-v1",
   "features": {
@@ -16,7 +16,10 @@
     "fileOnlyCoverage": true,
     "llmRetrievalBenchmark": true,
     "benchmarkThresholdGate": true,
-    "tightBenchmarkRegressionGate": true
+    "tightBenchmarkRegressionGate": true,
+    "amfMemoryV1": true,
+    "sealedMemoryRecords": true,
+    "memoryRecordMcpTools": true
   },
-  "updated": "2026-06-02"
+  "updated": "2026-07-11"
 }

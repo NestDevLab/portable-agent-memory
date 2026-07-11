@@ -72,6 +72,43 @@ function makeWorkspace() {
   return root;
 }
 
+function amfRecordContent() {
+  const values = {
+    schema: "amf-memory/v1",
+    id: "mem_11111111-1111-4111-8111-111111111111",
+    revision: 1,
+    claimType: "decision",
+    scope: { type: "shared", id: "shared:global" },
+    visibility: "shared",
+    subjects: [{ identityId: "agent:22222222-2222-4222-8222-222222222222", role: "owner" }],
+    claim: { encoding: "plain", text: "A portable, source-backed memory record." },
+    lifecycle: {
+      status: "active",
+      validFrom: "2026-07-11T10:00:00Z",
+      validTo: null,
+      supersedes: [],
+      revokedAt: null,
+      revocationReason: null
+    },
+    provenance: [{
+      sourceType: "test-session",
+      sourceId: "session-stable-0001",
+      eventId: "event-stable-0001",
+      contentSha256: "a".repeat(64),
+      capturedAt: "2026-07-11T10:00:00Z"
+    }],
+    createdAt: "2026-07-11T10:00:00Z",
+    updatedAt: "2026-07-11T10:00:00Z"
+  };
+  const metadata = Object.entries(values).map(([key, value]) => {
+    const rendered = value !== null && typeof value === "object"
+      ? JSON.stringify(value)
+      : String(value);
+    return `${key}: ${rendered}`;
+  }).join("\n");
+  return `---\n${metadata}\n---\nNon-claim commentary.\n`;
+}
+
 function driveServer(workspaceRoot, requests, timeoutMs = 5000) {
   return new Promise((resolve, reject) => {
     const child = spawn(process.execPath, [SERVER_PATH, "--workspace", workspaceRoot], {
@@ -140,6 +177,8 @@ test("server responds to initialize + tools/list", async () => {
   const toolNames = responses[1].result.tools.map((t) => t.name);
   assert.ok(toolNames.includes("memory_audit"));
   assert.ok(toolNames.includes("memory_propose_edit"));
+  assert.ok(toolNames.includes("memory_record_validate"));
+  assert.ok(toolNames.includes("memory_propose_record"));
   assert.ok(toolNames.includes("graph_validate"));
 });
 
@@ -202,4 +241,46 @@ test("server rejects memory_propose_edit on protected path", async () => {
   const payload = JSON.parse(callResponse.result.content[0].text);
   assert.equal(payload.status, "rejected");
   assert.match(payload.error, /protected/i);
+});
+
+test("server validates and records an AMF record proposal without applying it", async () => {
+  const root = makeWorkspace();
+  const content = amfRecordContent();
+  const responses = await driveServer(root, [
+    { jsonrpc: "2.0", id: 1, method: "initialize", params: {} },
+    {
+      jsonrpc: "2.0",
+      id: 2,
+      method: "tools/call",
+      params: {
+        name: "memory_propose_record",
+        arguments: { content, rationale: "Record reviewed portable memory." }
+      }
+    }
+  ]);
+  const payload = JSON.parse(responses[1].result.content[0].text);
+  assert.equal(payload.status, "recorded");
+  assert.equal(payload.projection.k, "memory-record");
+  assert.equal(fs.existsSync(path.join(root, payload.targetPath)), false);
+  assert.equal(fs.existsSync(path.join(root, payload.proposalPath)), true);
+});
+
+test("server returns a safe projection for a canonical AMF record", async () => {
+  const root = makeWorkspace();
+  const relative = "memory/amf/records/mem_11111111-1111-4111-8111-111111111111.md";
+  fs.mkdirSync(path.dirname(path.join(root, relative)), { recursive: true });
+  fs.writeFileSync(path.join(root, relative), amfRecordContent(), "utf8");
+  const responses = await driveServer(root, [
+    { jsonrpc: "2.0", id: 1, method: "initialize", params: {} },
+    {
+      jsonrpc: "2.0",
+      id: 2,
+      method: "tools/call",
+      params: { name: "memory_record_validate", arguments: { path: relative } }
+    }
+  ]);
+  const payload = JSON.parse(responses[1].result.content[0].text);
+  assert.equal(payload.status, "valid");
+  assert.equal(payload.projection.k, "memory-record");
+  assert.equal(payload.projection.src, relative);
 });
