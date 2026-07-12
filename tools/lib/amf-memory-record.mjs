@@ -14,6 +14,7 @@ const RECORD_FIELDS = new Set([
   "claimType",
   "scope",
   "visibility",
+  "confidence",
   "subjects",
   "claim",
   "lifecycle",
@@ -33,6 +34,7 @@ const RESERVED_CLAIM_TYPES = new Set([
 ]);
 const SCOPE_TYPES = new Set(["agent", "person", "relationship", "room", "domain", "shared"]);
 const VISIBILITIES = new Set(["private", "restricted", "shared", "confidential"]);
+const CONFIDENCE_BASES = new Set(["observed", "asserted", "inferred", "reviewed"]);
 const SUBJECT_ROLES = new Set(["subject", "object", "participant", "owner"]);
 const LIFECYCLE_STATUSES = new Set(["active", "superseded", "revoked", "expired"]);
 const MEMORY_ID_RE = /^mem_[A-Za-z0-9][A-Za-z0-9_-]{7,127}$/;
@@ -60,6 +62,7 @@ const PROVENANCE_FIELDS = new Set([
   "capturedAt"
 ]);
 const SUBJECT_FIELDS = new Set(["identityId", "role"]);
+const CONFIDENCE_FIELDS = new Set(["score", "basis", "assessedAt"]);
 
 function parseScalar(raw, lineNumber, errors) {
   const value = raw.trim();
@@ -181,6 +184,7 @@ function aadObjectFor(metadata) {
     claimType: metadata.claimType,
     scope: metadata.scope,
     visibility: metadata.visibility,
+    confidence: metadata.confidence,
     subjects: metadata.subjects
   };
   if (metadata.claim?.encoding === "sealed") {
@@ -305,6 +309,28 @@ function validateLifecycle(metadata, errors) {
   }
 }
 
+function validateConfidence(metadata, errors) {
+  const confidence = metadata.confidence;
+  if (!validateExactObject(confidence, "confidence", CONFIDENCE_FIELDS, errors)) return;
+  if (typeof confidence.score !== "number" || !Number.isFinite(confidence.score)
+      || confidence.score < 0 || confidence.score > 1) {
+    errors.push("confidence.score must be a finite number between 0 and 1");
+  }
+  if (!CONFIDENCE_BASES.has(confidence.basis)) {
+    errors.push("confidence.basis must be observed, asserted, inferred, or reviewed");
+  }
+  if (!isRfc3339Utc(confidence.assessedAt)) {
+    errors.push("confidence.assessedAt must be RFC 3339 UTC");
+  } else {
+    if (isRfc3339Utc(metadata.createdAt) && Date.parse(confidence.assessedAt) < Date.parse(metadata.createdAt)) {
+      errors.push("confidence.assessedAt must not be earlier than createdAt");
+    }
+    if (isRfc3339Utc(metadata.updatedAt) && Date.parse(confidence.assessedAt) > Date.parse(metadata.updatedAt)) {
+      errors.push("confidence.assessedAt must not be later than updatedAt");
+    }
+  }
+}
+
 function validateClaim(metadata, body, errors) {
   const claim = metadata.claim;
   if (!claim || typeof claim !== "object" || Array.isArray(claim)) {
@@ -383,7 +409,7 @@ function projectMemoryRecord(metadata, sourcePath = null) {
     n: mayProjectClaim ? (digest.slice(0, 80) || `${metadata.claimType} memory`) : "Protected memory record",
     d: digest,
     st: statusForProjection(metadata),
-    c: "high",
+    c: metadata.confidence.score >= 0.8 ? "high" : metadata.confidence.score >= 0.5 ? "medium" : "low",
     u: metadata.updatedAt.slice(0, 10),
     src: sourcePath ?? recordPathFor(metadata),
     tags: [SCHEMA, metadata.claimType, metadata.scope.type, metadata.lifecycle.status, metadata.claim.encoding]
@@ -477,6 +503,7 @@ function validateMemoryRecord(content, options = {}) {
     if (!isScopeId(metadata.scope.type, metadata.scope.id)) errors.push("scope.id must be canonical and match scope.type");
   }
   if (!VISIBILITIES.has(metadata.visibility)) errors.push("visibility is invalid");
+  validateConfidence(metadata, errors);
   validateSubjects(metadata.subjects, errors);
   validateClaim(metadata, parsed.body, errors);
   validateLifecycle(metadata, errors);
@@ -561,6 +588,13 @@ function validateMemoryRecordTransition(currentContent, proposedContent, options
     if (newRecord.claim.iv === oldRecord.claim.iv) errors.push("sealed claim must use a new IV for every revision");
   }
   if (!visibilityCanNarrow(oldRecord.visibility, newRecord.visibility)) errors.push("visibility must not widen across revisions");
+  const confidenceChanged = canonicalize(oldRecord.confidence) !== canonicalize(newRecord.confidence);
+  if (Date.parse(newRecord.confidence.assessedAt) < Date.parse(oldRecord.confidence.assessedAt)) {
+    errors.push("confidence.assessedAt must not move backwards across revisions");
+  }
+  if (confidenceChanged && Date.parse(newRecord.confidence.assessedAt) <= Date.parse(oldRecord.confidence.assessedAt)) {
+    errors.push("a confidence change requires a strictly newer confidence.assessedAt");
+  }
   if (newRecord.provenance.length < oldRecord.provenance.length
       || oldRecord.provenance.some((item, index) => canonicalize(item) !== canonicalize(newRecord.provenance[index]))) {
     errors.push("provenance is append-only and existing entries must remain unchanged and ordered");

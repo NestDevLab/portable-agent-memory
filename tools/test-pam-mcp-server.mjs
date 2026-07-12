@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
+import crypto from "node:crypto";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -9,6 +10,15 @@ import test from "node:test";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const SERVER_PATH = path.join(__dirname, "pam-mcp-server.mjs");
+const CURATOR_LEDGER_KEY = "mcp-ledger-key-material-00000000000000000000000000000000001";
+const CURATOR_REVIEWER_TOKEN = "mcp-reviewer-capability-token-0001";
+const APPLICATOR_TOKEN = "mcp-applicator-capability-token-0001";
+const CURATOR_STATE_DIR = fs.mkdtempSync(path.join(os.tmpdir(), "pam-mcp-curator-state-"));
+fs.chmodSync(CURATOR_STATE_DIR, 0o700);
+process.env.PAM_CURATOR_LEDGER_KEY = CURATOR_LEDGER_KEY;
+process.env.PAM_CURATOR_REVIEWER_TOKEN = CURATOR_REVIEWER_TOKEN;
+process.env.PAM_APPLICATOR_TOKEN = APPLICATOR_TOKEN;
+process.env.PAM_CURATOR_STATE_DIR = CURATOR_STATE_DIR;
 
 function makeWorkspace() {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "pam-mcp-e2e-"));
@@ -65,7 +75,36 @@ function makeWorkspace() {
         { source: "memory/conversation-log.md", archiveKey: "conversation-log", activeEntryLimit: 80 }
       ],
       readContextPaths: [],
-      protectedPaths: ["AGENTS.md", "CLAUDE.md", "memory/agent-memory", "memory/sources"]
+      protectedPaths: ["AGENTS.md", "CLAUDE.md", "memory/agent-memory", "memory/sources"],
+      amfCurator: {
+        version: "amf-curator-policy/v1",
+        autoPromote: false,
+        minimumConfidence: 0.98,
+        autoScopes: ["shared"],
+        autoVisibilities: ["shared"],
+        requireReviewForLifecycleChange: true,
+        requireReviewForSupersession: true,
+        rejectOnWarnings: true,
+        ledgerKeyEnv: "PAM_CURATOR_LEDGER_KEY",
+        stateDirEnv: "PAM_CURATOR_STATE_DIR",
+        reviewerTokenEnv: "PAM_CURATOR_REVIEWER_TOKEN",
+        reviewers: [{
+          tokenSha256: crypto.createHash("sha256").update(CURATOR_REVIEWER_TOKEN).digest("hex"),
+          actorId: "service:mcp-reviewer",
+          capabilities: ["memory:curate"]
+        }],
+        gitWriter: { enabled: false, dryRunOnly: true, protectedBranches: ["main", "master", "main-integration"] }
+      },
+      amfApplicator: {
+        version: "amf-receipt-applicator/v1",
+        tokenEnv: "PAM_APPLICATOR_TOKEN",
+        applicators: [{
+          tokenSha256: crypto.createHash("sha256").update(APPLICATOR_TOKEN).digest("hex"),
+          actorId: "service:mcp-applicator",
+          capabilities: ["memory:apply-receipt"]
+        }],
+        transport: { kind: "disabled", endpointEnv: "PAM_FABRIC_RECEIPT_ENDPOINT" }
+      }
     }, null, 2) + "\n",
     "utf8"
   );
@@ -80,6 +119,7 @@ function amfRecordContent() {
     claimType: "decision",
     scope: { type: "shared", id: "shared:global" },
     visibility: "shared",
+    confidence: { score: 0.99, basis: "reviewed", assessedAt: "2026-07-11T10:00:00Z" },
     subjects: [{ identityId: "agent:22222222-2222-4222-8222-222222222222", role: "owner" }],
     claim: { encoding: "plain", text: "A portable, source-backed memory record." },
     lifecycle: {
@@ -179,6 +219,12 @@ test("server responds to initialize + tools/list", async () => {
   assert.ok(toolNames.includes("memory_propose_edit"));
   assert.ok(toolNames.includes("memory_record_validate"));
   assert.ok(toolNames.includes("memory_propose_record"));
+  assert.ok(toolNames.includes("memory_curator_submit"));
+  assert.ok(toolNames.includes("memory_curator_review"));
+  assert.ok(toolNames.includes("memory_curator_status"));
+  assert.ok(toolNames.includes("memory_curator_git_plan"));
+  assert.ok(toolNames.includes("memory_curator_recover"));
+  assert.ok(toolNames.includes("memory_receipt_apply"));
   assert.ok(toolNames.includes("graph_validate"));
 });
 
@@ -263,6 +309,70 @@ test("server validates and records an AMF record proposal without applying it", 
   assert.equal(payload.projection.k, "memory-record");
   assert.equal(fs.existsSync(path.join(root, payload.targetPath)), false);
   assert.equal(fs.existsSync(path.join(root, payload.proposalPath)), true);
+});
+
+test("server queues and reports a redacted deterministic curator candidate", async () => {
+  const root = makeWorkspace();
+  const content = amfRecordContent();
+  const responses = await driveServer(root, [
+    { jsonrpc: "2.0", id: 1, method: "initialize", params: {} },
+    {
+      jsonrpc: "2.0",
+      id: 2,
+      method: "tools/call",
+      params: {
+        name: "memory_curator_submit",
+        arguments: {
+          content,
+          rationale: "Queue a synthetic reviewed record.",
+          idempotencyKey: "mcp-curator-candidate-0001",
+          confidence: 0.99,
+          source: { type: "synthetic-test", id: "session-stable-0001" }
+        }
+      }
+    },
+    {
+      jsonrpc: "2.0",
+      id: 3,
+      method: "tools/call",
+      params: { name: "memory_curator_status", arguments: {} }
+    }
+  ]);
+  const submitted = JSON.parse(responses[1].result.content[0].text);
+  assert.equal(submitted.ok, true, submitted.error);
+  assert.equal(submitted.status, "review_required");
+  const status = JSON.parse(responses[2].result.content[0].text);
+  assert.equal(status.ok, true, status.error);
+  assert.equal(status.candidates.length, 1);
+  assert.equal(JSON.stringify(status).includes("portable, source-backed"), false);
+  assert.equal(fs.existsSync(path.join(root, "memory", "amf", "records", "mem_11111111-1111-4111-8111-111111111111.md")), false);
+});
+
+test("server curator handlers reject unknown arguments even without transport schema enforcement", async () => {
+  const root = makeWorkspace();
+  const responses = await driveServer(root, [
+    { jsonrpc: "2.0", id: 1, method: "initialize", params: {} },
+    {
+      jsonrpc: "2.0",
+      id: 2,
+      method: "tools/call",
+      params: {
+        name: "memory_curator_submit",
+        arguments: {
+          content: amfRecordContent(),
+          rationale: "Must reject the extra field.",
+          idempotencyKey: "mcp-curator-strict-0001",
+          confidence: 0.99,
+          source: { type: "synthetic-test", id: "session-stable-0001" },
+          rawPayload: "RAW-MARKER"
+        }
+      }
+    }
+  ]);
+  const payload = JSON.parse(responses[1].result.content[0].text);
+  assert.equal(payload.ok, false);
+  assert.match(payload.error, /unknown fields/);
+  assert.equal(fs.existsSync(path.join(root, "memory", "amf", "curator")), false);
 });
 
 test("server returns a safe projection for a canonical AMF record", async () => {

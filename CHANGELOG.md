@@ -2,6 +2,56 @@
 
 ## Unreleased
 
+### Added
+
+- PAM 0.6.2 decision receipts and a separately authorized deterministic
+  applicator with durable apply-receipt outbox and crash recovery.
+
+- Mandatory exact `amf-memory/v1` confidence metadata with finite score,
+  evidence basis, UTC assessment time, AAD binding, and revision-safe changes.
+
+- Deterministic AMF candidate queue, versioned reviews, deduplication, policy
+  decisions, and `approved_pending_apply` receipts.
+- Strict, HMAC-chained append-only curator decision ledger with an authenticated
+  sequence/length/head anchor and redacted fail-closed status output.
+- `memory_curator_submit`, `memory_curator_review`,
+  `memory_curator_status`, and `memory_curator_git_plan` MCP tools plus the
+  `memory:curator` CLI.
+- Fail-closed Git writer plan abstraction, disabled and dry-run-only by default;
+  it refuses protected branches and direct push.
+
+### Safety
+
+- Applicator proposal digests are now enforced inside `applyProposal` after the
+  per-target lock and before archive reservation or target persistence, closing
+  the post-`prepared` proposal-swap TOCTOU window.
+
+- The curator accepts complete `amf-memory/v1` records only, never RAW
+  transcripts or arbitrary source payloads, and has no direct canonical write
+  path.
+- Automatic approval is disabled by default. Explicitly enabled eligible
+  candidates still require the separate `memory:apply-receipt` applicator.
+- Candidate/review artifacts require an external ledger key; manual review and
+  apply require a separately allowlisted server-side capability. Recovery
+  verifies the exact applied archive and canonical target before success.
+- The head anchor lives outside the curator queue tree and is never recreated
+  for a non-empty ledger. Dedup/status fail on any unverified artifact and
+  reconcile promotion events with applied-archive history. Ledger record,
+  source, and target references are HMAC-only.
+- The anchor and initialized marker now live in a pre-provisioned external
+  `0700` state root outside the workspace, paired with a workspace sentinel.
+  Deterministic crash recovery covers candidate-fsync and ledger-before-anchor
+  boundaries; strict-prefix anchor advancement requires an allowlisted admin
+  capability through CLI/MCP.
+- Review-fsync and apply-before-ledger boundaries now recover only from one
+  exact MAC-authenticated candidate-version decision or applied archive. Exact
+  retries converge; explicit admin recovery remains capability-gated and
+  refuses forged, unrelated, or ambiguous external-ahead state.
+- Automatic-policy retries additionally bind the normalized policy snapshot,
+  deterministic actor/action/idempotency, and exact original submission. Both
+  queued-review and auto-promote crash boundaries converge without weakening
+  the manual-review contract.
+
 ## 0.6.0 - 2026-07-11
 
 PAM 0.6.0 adds the optional `amf-memory/v1` Markdown record contract for

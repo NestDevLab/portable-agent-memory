@@ -31,6 +31,7 @@ function baseRecord(overrides = {}) {
     claimType: "decision",
     scope: { type: "shared", id: "shared:global" },
     visibility: "shared",
+    confidence: { score: 0.99, basis: "reviewed", assessedAt: "2026-07-11T10:00:00Z" },
     subjects: [{ identityId: IDS.agent, role: "owner" }],
     claim: { encoding: "plain", text: "A reusable source-backed decision." },
     lifecycle: {
@@ -108,12 +109,39 @@ test("validates the exact contract-v1 shape, canonical path, and graph projectio
   assert.equal(validation.ok, true, validation.errors.join("\n"));
   assert.equal(validation.expectedPath, `memory/amf/records/${IDS.memory}.md`);
   assert.equal(validation.projection.k, "memory-record");
+  assert.equal(validation.projection.c, "high");
   assert.match(validation.projection.d, /source-backed decision/);
   assert.equal(JSON.stringify(validation.projection).includes(IDS.agent), false);
 
   const legacy = validateMemoryRecord(recordContent({ ...baseRecord(), scope_kind: "shared" }));
   assert.equal(legacy.ok, false);
   assert.match(legacy.errors.join("\n"), /unknown frontmatter key: scope_kind/);
+});
+
+test("requires exact structured confidence with finite score, known basis, and bounded UTC assessment", () => {
+  const missing = { ...baseRecord() };
+  delete missing.confidence;
+  assert.match(validateMemoryRecord(recordContent(missing)).errors.join("\n"), /missing frontmatter key: confidence/);
+
+  for (const confidence of [
+    { score: -0.1, basis: "observed", assessedAt: "2026-07-11T10:00:00Z" },
+    { score: 1.1, basis: "observed", assessedAt: "2026-07-11T10:00:00Z" },
+    { score: null, basis: "observed", assessedAt: "2026-07-11T10:00:00Z" },
+    { score: 0.8, basis: "unknown", assessedAt: "2026-07-11T10:00:00Z" },
+    { score: 0.8, basis: "asserted", assessedAt: "2026-07-11T11:00:00Z" },
+    { score: 0.8, basis: "asserted", assessedAt: "2026-07-11T10:00:00Z", extra: true }
+  ]) {
+    const validation = validateMemoryRecord(recordContent(baseRecord({ confidence })));
+    assert.equal(validation.ok, false, JSON.stringify(confidence));
+    assert.match(validation.errors.join("\n"), /confidence/);
+  }
+  for (const basis of ["observed", "asserted", "inferred", "reviewed"]) {
+    const validation = validateMemoryRecord(recordContent(baseRecord({
+      confidence: { score: 0.5, basis, assessedAt: "2026-07-11T10:00:00Z" }
+    })));
+    assert.equal(validation.ok, true, validation.errors.join("\n"));
+    assert.equal(validation.projection.c, "medium");
+  }
 });
 
 test("seals person and relationship scopes, claim types, and related subjects", () => {
@@ -141,6 +169,11 @@ test("seals person and relationship scopes, claim types, and related subjects", 
   assert.equal(sealed.projection.n, "Protected memory record");
   assert.equal(JSON.stringify(sealed.projection).includes(IDS.person), false);
   assert.equal(JSON.stringify(sealed.projection).includes(metadata.claim.ciphertext), false);
+
+  const restricted = baseRecord({ visibility: "restricted" });
+  restricted.claim = sealedClaimFor(restricted);
+  const restrictedValidation = validateMemoryRecord(recordContent(restricted));
+  assert.equal(restrictedValidation.ok, true, restrictedValidation.errors.join("\n"));
 });
 
 test("validates keyRef, AES-GCM sizes, non-empty ciphertext, and canonical AAD hash", () => {
@@ -185,6 +218,13 @@ test("canonical AAD binds algorithm and external key identifiers", () => {
     assert.equal(rejected.ok, false);
     assert.match(rejected.errors.join("\n"), /canonical AAD|alg/);
   }
+  const confidenceChanged = {
+    ...metadata,
+    confidence: { score: 0.5, basis: "reviewed", assessedAt: metadata.confidence.assessedAt }
+  };
+  const rejectedConfidence = validateMemoryRecord(recordContent(confidenceChanged));
+  assert.equal(rejectedConfidence.ok, false);
+  assert.match(rejectedConfidence.errors.join("\n"), /canonical AAD/);
 });
 
 test("requires real RFC 3339 UTC timestamps", () => {
@@ -262,6 +302,32 @@ test("enforces revision, base hash, immutable claim, append-only provenance, and
   assert.match(errors, /base hash/);
 });
 
+test("confidence changes are revision-aware and require a newer assessment", () => {
+  const current = recordContent(baseRecord());
+  const changed = baseRecord({
+    revision: 2,
+    updatedAt: "2026-07-11T11:00:00Z",
+    confidence: { score: 0.75, basis: "asserted", assessedAt: "2026-07-11T11:00:00Z" },
+    provenance: [
+      ...baseRecord().provenance,
+      {
+        sourceType: "operator-decision",
+        sourceId: "decision-stable-0002",
+        eventId: "event-stable-0002",
+        contentSha256: "b".repeat(64),
+        capturedAt: "2026-07-11T11:00:00Z"
+      }
+    ]
+  });
+  const valid = validateMemoryRecordTransition(current, recordContent(changed));
+  assert.equal(valid.ok, true, valid.errors.join("\n"));
+
+  const staleAssessment = { ...changed, confidence: { ...changed.confidence, assessedAt: baseRecord().confidence.assessedAt } };
+  const rejected = validateMemoryRecordTransition(current, recordContent(staleAssessment));
+  assert.equal(rejected.ok, false);
+  assert.match(rejected.errors.join("\n"), /strictly newer/);
+});
+
 test("sealed revisions refresh canonical AAD and reject IV reuse or downgrade", () => {
   const currentMetadata = baseRecord({
     scope: { type: "person", id: IDS.person },
@@ -275,6 +341,7 @@ test("sealed revisions refresh canonical AAD and reject IV reuse or downgrade", 
     ...currentMetadata,
     revision: 2,
     updatedAt: "2026-07-11T11:00:00Z",
+    confidence: { score: 0.8, basis: "reviewed", assessedAt: "2026-07-11T11:00:00Z" },
     provenance: [
       ...currentMetadata.provenance,
       {
@@ -324,6 +391,7 @@ test("resolves every supersedes target through the workspace", () => {
   const replacementMetadata = baseRecord({
     id: IDS.replacement,
     claim: { encoding: "plain", text: "Corrected source-backed decision." },
+    confidence: { score: 0.99, basis: "reviewed", assessedAt: "2026-07-11T12:00:00Z" },
     lifecycle: { ...baseRecord().lifecycle, supersedes: [IDS.memory] },
     createdAt: "2026-07-11T12:00:00Z",
     updatedAt: "2026-07-11T12:00:00Z"

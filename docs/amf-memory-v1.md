@@ -1,6 +1,6 @@
 # AMF memory record v1
 
-PAM 0.6.0 implements the public `amf-memory/v1` file-first contract used by
+PAM 0.6.1 implements the public `amf-memory/v1` file-first contract used by
 Agent Memory Fabric. It is additive: existing PAM logs and graph-v1 workspaces
 continue to work unchanged.
 
@@ -26,6 +26,7 @@ revision: 1
 claimType: decision
 scope: {"type":"shared","id":"shared:global"}
 visibility: shared
+confidence: {"score":0.99,"basis":"reviewed","assessedAt":"2026-07-11T10:00:00Z"}
 subjects: [{"identityId":"agent:22222222-2222-4222-8222-222222222222","role":"owner"}]
 claim: {"encoding":"plain","text":"A portable source-backed decision."}
 lifecycle: {"status":"active","validFrom":"2026-07-11T10:00:00Z","validTo":null,"supersedes":[],"revokedAt":null,"revocationReason":null}
@@ -39,6 +40,13 @@ Optional non-claim commentary.
 Unknown fields and unknown major schemas fail validation. Timestamps are strict
 RFC 3339 UTC (`Z`), not local offsets. Provenance is non-empty and contains
 pointers and hashes, never embedded RAW.
+
+`confidence` is mandatory and contains exactly `score`, `basis`, and
+`assessedAt`. `score` is a finite number from `0` through `1`; `basis` is one
+of `observed`, `asserted`, `inferred`, or `reviewed`; `assessedAt` is RFC 3339
+UTC and falls between `createdAt` and `updatedAt`. Unknown or missing fields
+fail closed. A revision may reassess confidence, but any change requires a
+strictly newer `assessedAt`, which may never move backwards.
 
 ## Sealed claims
 
@@ -73,7 +81,7 @@ UTF-8. In addition to record routing fields, it binds the envelope algorithm
 and external key identifiers:
 
 ```json
-{"schema":"...","id":"...","revision":1,"claimType":"...","scope":{},"visibility":"...","subjects":[],"envelope":{"alg":"AES-256-GCM","kekId":"kek:...","keyRef":"key:..."}}
+{"schema":"...","id":"...","revision":1,"claimType":"...","scope":{},"visibility":"...","confidence":{"score":0.99,"basis":"reviewed","assessedAt":"2026-07-11T10:00:00Z"},"subjects":[],"envelope":{"alg":"AES-256-GCM","kekId":"kek:...","keyRef":"key:..."}}
 ```
 
 PAM recomputes its SHA-256 and requires an exact `aadSha256` match. An IV of any
@@ -95,6 +103,7 @@ recording and applying the proposal:
 - ID, creation time, claim type, scope, and subjects are immutable; plaintext
   claims are byte-for-byte immutable;
 - visibility can narrow but cannot widen;
+- confidence reassessment requires a strictly newer assessment timestamp;
 - provenance and `lifecycle.supersedes` are append-only;
 - only `active` may transition to a terminal lifecycle state;
 - `updatedAt` strictly increases.
@@ -150,6 +159,13 @@ That warning is durable across the whole review boundary. Proposal results and
 artifacts, applied archives, and apply results expose `graphProjectionStale`,
 `regenerateAfterApply`, and a required `npm run memory:graph:index` follow-up.
 An apply coordinator must not discard that follow-up when marking its task done.
+
+## Optional curator
+
+The deterministic AMF curator adds an idempotent queue, policy/review decisions,
+deduplication, and proposal/apply orchestration without changing this record
+contract. It is disabled for automatic promotion by default and never accepts
+RAW transcripts. See [AMF deterministic curator](amf-curator.md).
 
 ## Validation
 

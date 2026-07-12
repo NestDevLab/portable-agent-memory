@@ -69,6 +69,10 @@ function proposalIdentity(record) {
   };
 }
 
+function proposalArtifactDigest(record) {
+  return crypto.createHash("sha256").update(canonicalJson(proposalIdentity(record)), "utf8").digest("hex");
+}
+
 function validationWarningSummary(validation) {
   const summary = validation?.amfMemory ?? validation ?? {};
   return {
@@ -212,8 +216,12 @@ function reservationMatches(reservation, proposal) {
 function applyProposal(workspaceRoot, config, input, runtimeOptions = {}) {
   const proposalId = input?.proposalId;
   const lockOptions = runtimeOptions.lockOptions ?? {};
+  const expectedProposalDigest = runtimeOptions.expectedProposalDigest;
   const invalid = validateProposalId(proposalId);
   if (invalid) return { ok: false, error: invalid };
+  if (expectedProposalDigest !== undefined && !/^[0-9a-f]{64}$/.test(String(expectedProposalDigest))) {
+    return { ok: false, error: "expectedProposalDigest must be a lowercase SHA-256 digest" };
+  }
 
   const proposalAbsolute = proposalPathFor(workspaceRoot, proposalId);
   const archivedAbsolute = appliedPathFor(workspaceRoot, proposalId);
@@ -242,6 +250,10 @@ function applyProposal(workspaceRoot, config, input, runtimeOptions = {}) {
     const initialArchive = loadArchive(workspaceRoot, proposalId);
     if (!initialArchive.ok) return initialArchive;
     if (initialArchive.exists && initialArchive.record.status === "applied") {
+      if (expectedProposalDigest !== undefined
+          && proposalArtifactDigest(initialArchive.record) !== expectedProposalDigest) {
+        return { ok: false, error: "immutable proposal digest conflict" };
+      }
       let liveProposal = null;
       if (fs.existsSync(proposalAbsolute)) {
         const loaded = loadProposal(workspaceRoot, proposalId);
@@ -253,12 +265,11 @@ function applyProposal(workspaceRoot, config, input, runtimeOptions = {}) {
       return recoverAppliedArchive(workspaceRoot, config, proposalId, initialArchive.record, liveProposal);
     }
 
-    const loaded = loadProposal(workspaceRoot, proposalId);
-    if (!loaded.ok) return loaded;
-    const { record } = loaded;
-    const { targetPath, diff } = record;
+    const preliminary = loadProposal(workspaceRoot, proposalId);
+    if (!preliminary.ok) return preliminary;
+    const preliminaryDigest = proposalArtifactDigest(preliminary.record);
+    const { targetPath } = preliminary.record;
     if (typeof targetPath !== "string" || targetPath.trim() === "") return { ok: false, error: "proposal missing targetPath" };
-    if (!diff || typeof diff !== "object") return { ok: false, error: "proposal missing diff" };
     const targetLockId = crypto.createHash("sha256").update(toPosixPath(targetPath)).digest("hex");
     const targetLockAbsolute = path.join(workspaceRoot, PROPOSALS_DIRNAME, `target-${targetLockId}.lock`);
     try {
@@ -266,6 +277,22 @@ function applyProposal(workspaceRoot, config, input, runtimeOptions = {}) {
     } catch (error) {
       return { ok: false, error: `target is already being modified: ${error.message}` };
     }
+
+    if (typeof runtimeOptions.onTargetLockAcquired === "function") {
+      runtimeOptions.onTargetLockAcquired({ proposalId, proposalAbsolute, targetPath });
+    }
+    const locked = loadProposal(workspaceRoot, proposalId);
+    if (!locked.ok) return locked;
+    const lockedDigest = proposalArtifactDigest(locked.record);
+    if (lockedDigest !== preliminaryDigest) {
+      return { ok: false, error: "proposal changed while acquiring the target lock" };
+    }
+    if (expectedProposalDigest !== undefined && lockedDigest !== expectedProposalDigest) {
+      return { ok: false, error: "immutable proposal digest conflict" };
+    }
+    const { record } = locked;
+    const { diff } = record;
+    if (!diff || typeof diff !== "object") return { ok: false, error: "proposal missing diff" };
 
     const pathCheck = validatePathSafety(workspaceRoot, targetPath, config);
     if (!pathCheck.ok) return { ok: false, error: pathCheck.error };
@@ -403,4 +430,4 @@ function applyProposal(workspaceRoot, config, input, runtimeOptions = {}) {
   }
 }
 
-export { applyProposal };
+export { applyProposal, proposalArtifactDigest };

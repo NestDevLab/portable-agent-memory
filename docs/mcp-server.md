@@ -7,7 +7,7 @@ markdown + JSONL contract is unchanged; the server is purely additive runtime.
 ## What you get
 
 The server runs locally over stdio (no network, no daemon, no port) and exposes
-17 tools under the `pam` namespace:
+22 tools under the `pam` namespace:
 
 - `pam_version`, `memory_state`, `maintenance_config`: context tools
 - `memory_list`, `memory_read`, `memory_search`: safe filesystem reads under `memory/`
@@ -20,6 +20,18 @@ The server runs locally over stdio (no network, no daemon, no port) and exposes
 - `memory_apply_proposal`: applies a recorded proposal through an exclusive
   `applying` reservation, atomic target persistence, `applied` finalization,
   and idempotent recovery
+- `memory_curator_submit`, `memory_curator_review`, and
+  `memory_curator_status`: deterministic AMF candidate/review orchestration
+  with authenticated artifacts, a redacted HMAC-chained decision ledger, and a
+  sequence/length/head anchor
+- `memory_receipt_apply`: separately authorized receipt applicator; verifies an
+  `approved_pending_apply` decision, uses PAM proposal/apply, and queues a
+  digest-bound `memory_apply_receipt`
+- `memory_curator_git_plan`: fail-closed Git writer planning; disabled and
+  dry-run-only by default, with no Git execution or push path
+- `memory_curator_recover`: curator-only recovery for an existing strict-prefix
+  external anchor or one exact review artifact; apply recovery is an exact
+  `memory_receipt_apply` retry
 - `maintenance_run`: wraps the maintenance CLI (defaults to dry-run)
 
 Write paths through the server are bounded:
@@ -31,8 +43,13 @@ Write paths through the server are bounded:
   re-validates everything (protected paths, drift, graph integrity) before
   applying. Archive collisions and proposal-identity mismatches fail closed
   before target persistence.
-- `memory_propose_record` is the only MCP path for creating an AMF record;
-  creation remains pending until `memory_apply_proposal` re-validates it.
+- `memory_propose_record` is the only underlying proposal path for creating an
+  AMF record. Only the receipt applicator delegates to it.
+- The curator emits `review_required`, `rejected`, or
+  `approved_pending_apply`; it never applies or reports promotion.
+- Curator decisions require `memory:curate`; canonical application requires a
+  distinct server-side `memory:apply-receipt` capability. Client-supplied
+  reviewer labels never authorize a change.
 - `graph_reindex` writes only the derived `memory/graph/catalog.json`.
 - `maintenance_run` is gated by `config` and defaults to dry-run.
 
@@ -142,7 +159,7 @@ set to the repo root. The exact config file location depends on your client.
 Each host prefixes MCP tools with the server name. Claude Code surfaces them as
 `mcp__pam__memory_audit`, `mcp__pam__graph_validate`, and so on. Cursor and
 Codex use similar prefixes. The unprefixed tool name within the server is
-always one of the 17 listed above.
+always one of the 22 listed above.
 
 ## Workspace selection
 
@@ -169,8 +186,10 @@ one-file change in `tools/lib/mcp-transport.mjs`.
 
 ## Safety surface
 
-`memory_propose_edit` and `memory_propose_record` are the only tools that
-produce artifacts intended for review. They reject, with a clear error message:
+`memory_propose_edit`, `memory_propose_record`, and the curator tools produce
+artifacts intended for review. The separate receipt applicator delegates
+canonical changes to the proposal/apply tools. They reject, with a clear error
+message:
 
 - paths matching `config.protectedPaths` (`AGENTS.md`, `CLAUDE.md`, `memory/agent-memory/`, `memory/sources/`);
 - paths that resolve outside the workspace;
@@ -188,6 +207,8 @@ typically via `memory_apply_proposal` below.
 
 For the record schema, sealed-claim rules, lifecycle constraints, and safe graph
 projection, see [AMF memory record v1](amf-memory-v1.md).
+For curator policy, idempotency, recovery, and the redacted decision ledger,
+see [AMF deterministic curator](amf-curator.md).
 
 ## Write tools
 

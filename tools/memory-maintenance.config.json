@@ -50,6 +50,42 @@
       }
     }
   },
+  "amfCurator": {
+    "version": "amf-curator-policy/v1",
+    "autoPromote": false,
+    "minimumConfidence": 0.98,
+    "autoScopes": [
+      "shared"
+    ],
+    "autoVisibilities": [
+      "shared"
+    ],
+    "requireReviewForLifecycleChange": true,
+    "requireReviewForSupersession": true,
+    "rejectOnWarnings": true,
+    "ledgerKeyEnv": "PAM_CURATOR_LEDGER_KEY",
+    "stateDirEnv": "PAM_CURATOR_STATE_DIR",
+    "reviewerTokenEnv": "PAM_CURATOR_REVIEWER_TOKEN",
+    "reviewers": [],
+    "gitWriter": {
+      "enabled": false,
+      "dryRunOnly": true,
+      "protectedBranches": [
+        "main",
+        "master",
+        "main-integration"
+      ]
+    }
+  },
+  "amfApplicator": {
+    "version": "amf-receipt-applicator/v1",
+    "tokenEnv": "PAM_APPLICATOR_TOKEN",
+    "applicators": [],
+    "transport": {
+      "kind": "disabled",
+      "endpointEnv": "PAM_FABRIC_RECEIPT_ENDPOINT"
+    }
+  },
   "workspace": {
     "name": "Example Memory Workspace",
     "description": "Markdown-based memory workspace maintained by an AI agent.",
