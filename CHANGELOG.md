@@ -2,6 +2,38 @@
 
 ## Unreleased
 
+## 0.5.4 - 2026-06-02
+
+PAM 0.5.4 makes the repo installable as a Claude Code plugin marketplace.
+No runtime or schema behavior changes.
+
+### Added
+
+- `.claude-plugin/marketplace.json` listing the single `pam` plugin with
+  `"source": "./"` so Claude Code discovers the existing
+  `.claude-plugin/plugin.json` at repo root.
+- `claudeMarketplaceManifest` feature flag in `memory/pam.version.json`.
+- Migration guide `migrations/0.5.3-to-0.5.4-marketplace-manifest.md`.
+
+### Fixed
+
+- `.claude-plugin/plugin.json` `version` field was stuck at `0.4.0` since
+  the 0.4.0 release; bumped to `0.5.4` to align with `package.json` and
+  `memory/pam.version.json`.
+
+### Install
+
+```text
+/plugin marketplace add github:NestDevLab/portable-agent-memory
+/plugin install pam@portable-agent-memory
+```
+
+### Compatibility
+
+- `memoryFormat` remains `graph-v1`.
+- `graphSchemaVersion` remains `pam-graph-v1`.
+- Existing 0.5.3 graph JSONL files remain valid.
+
 ## 0.5.0 - 2026-05-27
 
 PAM 0.5.0 adds a measurable file-only retrieval gate for agents that cannot use

@@ -1,0 +1,13 @@
+{
+  "name": "portable-agent-memory",
+  "owner": {
+    "name": "NestDevLab"
+  },
+  "plugins": [
+    {
+      "name": "pam",
+      "source": "./",
+      "description": "Portable Agent Memory: MCP server, curator/scribe subagents, slash commands, and hooks for Claude Code."
+    }
+  ]
+}
