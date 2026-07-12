@@ -13,3 +13,5 @@ node tools/amf-review-notifier.mjs relay --input <owner-only-scan-file> --state-
 ```
 
 Keep timer output aggregate-only. Do not log the scan JSON or OpenClaw command arguments.
+
+Linux systemd deployment templates live in `deploy/systemd/`. Keep the scanner beside the authenticated curator state and the relay beside OpenClaw. Put host-specific paths, the exact canonical scope, remote SSH target, and the Discord channel identifier only in owner-only `/etc/default` or user configuration files; never commit them.

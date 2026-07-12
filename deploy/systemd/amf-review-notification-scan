@@ -1,0 +1,15 @@
+#!/bin/sh
+set -eu
+umask 077
+
+CONFIG=${AMF_REVIEW_SCAN_CONFIG:-/etc/default/amf-review-notification-scan}
+. "$CONFIG"
+set -a
+. "$PAM_REVIEW_WORKER_ENV"
+set +a
+
+exec /usr/sbin/runuser -u "$PAM_REVIEW_USER" --preserve-environment -- \
+  /usr/bin/node "$PAM_REVIEW_TOOL" scan \
+  --workspace "$PAM_REVIEW_WORKSPACE" \
+  --scope "$PAM_REVIEW_SCOPE" \
+  --limit "$PAM_REVIEW_LIMIT"

@@ -1,0 +1,18 @@
+#!/bin/sh
+set -eu
+umask 077
+
+CONFIG=${AMF_REVIEW_RELAY_CONFIG:-/etc/default/amf-review-discord-relay}
+. "$CONFIG"
+mkdir -p "$AMF_REVIEW_STATE_DIR"
+chmod 700 "$AMF_REVIEW_STATE_DIR"
+INPUT=$(mktemp "$AMF_REVIEW_STATE_DIR/.scan.XXXXXX")
+trap 'rm -f "$INPUT"' EXIT HUP INT TERM
+
+/usr/bin/ssh -o BatchMode=yes -o ConnectTimeout=10 "$AMF_REVIEW_REMOTE" -- "$AMF_REVIEW_REMOTE_COMMAND" >"$INPUT"
+chmod 600 "$INPUT"
+/usr/bin/node "$AMF_REVIEW_TOOL" relay \
+  --input "$INPUT" \
+  --state-dir "$AMF_REVIEW_STATE_DIR" \
+  --target-file "$AMF_REVIEW_TARGET_FILE" \
+  --openclaw-bin "$AMF_REVIEW_OPENCLAW_BIN"

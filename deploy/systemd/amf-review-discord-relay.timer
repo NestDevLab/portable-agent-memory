@@ -1,0 +1,13 @@
+[Unit]
+Description=Run the PAM review notification relay
+
+[Timer]
+OnBootSec=2min
+OnUnitActiveSec=2min
+RandomizedDelaySec=15s
+AccuracySec=5s
+Persistent=true
+Unit=amf-review-discord-relay.service
+
+[Install]
+WantedBy=timers.target
