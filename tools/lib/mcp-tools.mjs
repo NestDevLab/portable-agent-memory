@@ -13,6 +13,14 @@ import { detectMemoryState } from "../memory-migration.mjs";
 
 import { appendEntry } from "./memory-append.mjs";
 import { applyProposal } from "./memory-apply-proposal.mjs";
+import {
+  curatorStatus,
+  planCuratorGitWrite,
+  recoverCuratorLedger,
+  reviewCuratorCandidate,
+  submitCuratorCandidate
+} from "./memory-curator.mjs";
+import { applyDecisionReceipt } from "./memory-receipt-applicator.mjs";
 import { validateMemoryRecord } from "./amf-memory-record.mjs";
 import { runAudit } from "./memory-audit.mjs";
 import { memoryList, memoryRead, memorySearch } from "./memory-fs.mjs";
@@ -311,6 +319,119 @@ function buildToolRegistry({ workspaceRoot, serverVersion }) {
         }
         return jsonResultContent(result);
       }
+    },
+    {
+      name: "memory_curator_submit",
+      description: "Validates and queues a complete amf-memory/v1 candidate. It emits only a review_required, rejected, or approved_pending_apply decision receipt and never applies canonical memory.",
+      inputSchema: {
+        type: "object",
+        properties: {
+          content: { type: "string", description: "Complete amf-memory/v1 Markdown record; never a transcript or RAW event" },
+          rationale: { type: "string" },
+          idempotencyKey: { type: "string", minLength: 8, maxLength: 256 },
+          confidence: { type: "number", minimum: 0, maximum: 1 },
+          source: {
+            type: "object",
+            properties: { type: { type: "string" }, id: { type: "string" } },
+            required: ["type", "id"],
+            additionalProperties: false
+          }
+        },
+        required: ["content", "rationale", "idempotencyKey", "confidence", "source"],
+        additionalProperties: false
+      },
+      handler: async (args) => jsonResultContent(submitCuratorCandidate(workspaceRoot, loadConfig(), args ?? {}))
+    },
+    {
+      name: "memory_curator_review",
+      description: "Records a versioned approve/reject review and emits a decision receipt. Approval remains approved_pending_apply and cannot write canonical memory.",
+      inputSchema: {
+        type: "object",
+        properties: {
+          candidateId: { type: "string" },
+          action: { type: "string", enum: ["approve", "reject"] },
+          rationale: { type: "string" },
+          reviewer: { type: "string" },
+          idempotencyKey: { type: "string", minLength: 8, maxLength: 256 },
+          confidence: { type: "number", minimum: 0, maximum: 1 }
+        },
+        required: ["candidateId", "action", "rationale", "reviewer", "idempotencyKey"],
+        additionalProperties: false
+      },
+      handler: async (args) => jsonResultContent(reviewCuratorCandidate(workspaceRoot, loadConfig(), args ?? {}))
+    },
+    {
+      name: "memory_receipt_apply",
+      description: "Applicator-only deterministic transition for an approved decision receipt. It verifies policy/revision, uses PAM proposal/apply, queues an apply receipt, and dispatches only through a configured injected sink.",
+      inputSchema: {
+        type: "object",
+        properties: {
+          decisionId: { type: "string" },
+          idempotencyKey: { type: "string", minLength: 8, maxLength: 256 },
+          dispatch: { type: "boolean" }
+        },
+        required: ["decisionId", "idempotencyKey"],
+        additionalProperties: false
+      },
+      handler: async (args) => jsonResultContent(applyDecisionReceipt(workspaceRoot, loadConfig(), args ?? {}))
+    },
+    {
+      name: "memory_curator_status",
+      description: "Returns redacted curator queue/review state and verifies the append-only decision ledger hash chain. It never returns claim content.",
+      inputSchema: {
+        type: "object",
+        properties: { candidateId: { type: "string" } },
+        additionalProperties: false
+      },
+      handler: async (args) => jsonResultContent(curatorStatus(workspaceRoot, loadConfig(), args ?? {}))
+    },
+    {
+      name: "memory_curator_git_plan",
+      description: "Produces a fail-closed dry-run Git writer plan. The writer is disabled by default and always refuses direct push and protected branches.",
+      inputSchema: {
+        type: "object",
+        properties: {
+          branch: { type: "string" },
+          baseBranch: { type: "string" },
+          remote: { type: "string" },
+          dryRun: { type: "boolean" },
+          push: { type: "boolean" }
+        },
+        required: ["branch"],
+        additionalProperties: false
+      },
+      handler: async (args) => jsonResultContent(planCuratorGitWrite(loadConfig(), args ?? {}))
+    },
+    {
+      name: "memory_curator_recover",
+      description: "Curator-only deterministic recovery for a strict-prefix anchor or one exact review artifact. Apply recovery belongs to memory_receipt_apply.",
+      inputSchema: {
+        type: "object",
+        properties: {
+          action: { type: "string", enum: ["advance-anchor", "recover-review"] },
+          candidateId: { type: "string" },
+          decisionAction: { type: "string", enum: ["approve", "reject"] },
+          rationale: { type: "string" },
+          reviewer: { type: "string" },
+          idempotencyKey: { type: "string" },
+          confidence: { type: "number", minimum: 0, maximum: 1 }
+        },
+        required: ["action"],
+        oneOf: [
+          {
+            properties: { action: { const: "advance-anchor" } },
+            required: ["action"]
+          },
+          {
+            properties: {
+              action: { const: "recover-review" }
+            },
+            required: ["action", "candidateId", "decisionAction", "rationale", "reviewer", "idempotencyKey"]
+          }
+        ],
+        additionalProperties: false
+      },
+      handler: async (args) => jsonResultContent(recoverCuratorLedger(workspaceRoot, loadConfig(), args ?? {}))
     }
   ];
 

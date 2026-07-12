@@ -4,7 +4,7 @@ import os from "node:os";
 import path from "node:path";
 import test from "node:test";
 
-import { applyProposal } from "./lib/memory-apply-proposal.mjs";
+import { applyProposal, proposalArtifactDigest } from "./lib/memory-apply-proposal.mjs";
 import { proposeEdit } from "./lib/memory-proposals.mjs";
 
 function makeWorkspace() {
@@ -151,4 +151,53 @@ test("applyProposal applies a unified-diff proposal", () => {
   assert.equal(result.ok, true);
   const target = fs.readFileSync(path.join(root, "memory", "knowledge-log.md"), "utf8");
   assert.ok(target.includes("Five retries per upstream timeout."));
+});
+
+test("expected proposal digest is checked under the target lock", () => {
+  const root = makeWorkspace();
+  const proposalId = recordProposal(root, {
+    path: "memory/knowledge-log.md",
+    rationale: "immutable proposal",
+    diff: {
+      kind: "replace",
+      anchor: { headerLine: "## 2026-04-12 - Worker retries" },
+      before: "## 2026-04-12 - Worker retries\n\nFive retries.\n",
+      after: "## 2026-04-12 - Worker retries\n\nFive immutable retries.\n"
+    }
+  });
+  const proposalPath = path.join(root, "memory", "maintenance", "proposals", `${proposalId}.json`);
+  const original = JSON.parse(fs.readFileSync(proposalPath, "utf8"));
+  const expectedProposalDigest = proposalArtifactDigest(original);
+  const result = applyProposal(root, defaultConfig(), { proposalId }, {
+    expectedProposalDigest,
+    onTargetLockAcquired: () => {
+      const altered = { ...original, rationale: "valid but altered after preliminary read" };
+      fs.writeFileSync(proposalPath, `${JSON.stringify(altered, null, 2)}\n`, "utf8");
+    }
+  });
+  assert.equal(result.ok, false);
+  assert.match(result.error, /changed while acquiring|digest conflict/);
+  assert.match(fs.readFileSync(path.join(root, "memory", "knowledge-log.md"), "utf8"), /Five retries\./);
+  assert.equal(fs.existsSync(path.join(root, "memory", "maintenance", "proposals", `${proposalId}.applied.json`)), false);
+});
+
+test("unchanged expected proposal digest applies and recovers normally", () => {
+  const root = makeWorkspace();
+  const proposalId = recordProposal(root, {
+    path: "memory/knowledge-log.md",
+    rationale: "stable digest",
+    diff: {
+      kind: "replace",
+      anchor: { headerLine: "## 2026-04-12 - Worker retries" },
+      before: "## 2026-04-12 - Worker retries\n\nFive retries.\n",
+      after: "## 2026-04-12 - Worker retries\n\nFive stable retries.\n"
+    }
+  });
+  const proposalPath = path.join(root, "memory", "maintenance", "proposals", `${proposalId}.json`);
+  const expectedProposalDigest = proposalArtifactDigest(JSON.parse(fs.readFileSync(proposalPath, "utf8")));
+  const applied = applyProposal(root, defaultConfig(), { proposalId }, { expectedProposalDigest });
+  assert.equal(applied.ok, true, applied.error);
+  const recovered = applyProposal(root, defaultConfig(), { proposalId }, { expectedProposalDigest });
+  assert.equal(recovered.ok, true, recovered.error);
+  assert.equal(recovered.recovered, true);
 });

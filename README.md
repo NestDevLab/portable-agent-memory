@@ -43,7 +43,11 @@ The important pieces are:
   directly without Node, npm, a database, or embeddings.
 - [docs/amf-memory-v1.md](docs/amf-memory-v1.md): optional source-traceable,
   scope-aware Markdown record contract with sealed private bodies and safe
-  graph projections.
+  graph projections; PAM 0.6.1 requires structured confidence and binds it
+  into sealed-record AAD.
+- [docs/amf-curator.md](docs/amf-curator.md): deterministic candidate queue,
+  versioned decision receipts, separately authorized receipt application, and fail-closed
+  dry-run Git writer plan.
 - [memory/agent-memory/pam.md](memory/agent-memory/pam.md): the Portable Agent
   Memory constitution. This is the setup/protocol reference agents should
   follow when changing or auditing PAM itself.

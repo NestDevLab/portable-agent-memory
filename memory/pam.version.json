@@ -1,5 +1,5 @@
 {
-  "pamVersion": "0.6.0",
+  "pamVersion": "0.6.2",
   "memoryFormat": "graph-v1",
   "graphSchemaVersion": "pam-graph-v1",
   "features": {
@@ -19,7 +19,16 @@
     "tightBenchmarkRegressionGate": true,
     "amfMemoryV1": true,
     "sealedMemoryRecords": true,
-    "memoryRecordMcpTools": true
+    "memoryRecordMcpTools": true,
+    "memoryRecordConfidence": true,
+    "deterministicMemoryCurator": true,
+    "curatorDecisionLedger": true,
+    "curatorGitWriterDryRun": true,
+    "curatorExternalStateAnchor": true,
+    "curatorForwardRecovery": true,
+    "curatorDecisionReceipts": true,
+    "separateReceiptApplicator": true,
+    "durableApplyReceiptOutbox": true
   },
-  "updated": "2026-07-11"
+  "updated": "2026-07-12"
 }
