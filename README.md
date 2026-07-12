@@ -41,6 +41,9 @@ The important pieces are:
   compact graph-first runtime guide for everyday agent memory lookup.
 - [memory/graph/](memory/graph): AI-first JSONL graph memory. Agents can read it
   directly without Node, npm, a database, or embeddings.
+- [docs/amf-memory-v1.md](docs/amf-memory-v1.md): optional source-traceable,
+  scope-aware Markdown record contract with sealed private bodies and safe
+  graph projections.
 - [memory/agent-memory/pam.md](memory/agent-memory/pam.md): the Portable Agent
   Memory constitution. This is the setup/protocol reference agents should
   follow when changing or auditing PAM itself.

@@ -4,6 +4,18 @@ import path from "node:path";
 
 import { validateGraph } from "../memory-graph.mjs";
 import {
+  isAmfRecordPath,
+  recordPathFor,
+  recordSha256,
+  validateMemoryRecord,
+  validateMemoryRecordTransition
+} from "./amf-memory-record.mjs";
+import {
+  assertNoSymlinkPath,
+  atomicWriteFileSync,
+  readFileNoFollowSync
+} from "./secure-fs.mjs";
+import {
   isPathProtected,
   resolveInsideWorkspace,
   toPosixPath,
@@ -37,14 +49,13 @@ function validatePathSafety(workspaceRoot, relativePath, config) {
   } catch (error) {
     return { ok: false, error: error.message };
   }
-  if (fs.existsSync(absolute)) {
-    const stats = fs.lstatSync(absolute);
-    if (stats.isSymbolicLink()) {
-      return { ok: false, error: "target path is a symlink" };
-    }
-    if (!stats.isFile()) {
+  try {
+    assertNoSymlinkPath(workspaceRoot, absolute);
+    if (fs.existsSync(absolute) && !fs.lstatSync(absolute).isFile()) {
       return { ok: false, error: "target path is not a file" };
     }
+  } catch (error) {
+    return { ok: false, error: error.message };
   }
   const protectedPaths = Array.isArray(config?.protectedPaths) ? config.protectedPaths : [];
   if (isPathProtected(workspaceRoot, relativePath, protectedPaths)) {
@@ -226,6 +237,54 @@ function validateGraphJsonl(workspaceRoot, targetRelative, proposedContent) {
   return { ok: true };
 }
 
+function validateAmfRecordTarget(targetRelative, proposedContent, options = {}) {
+  if (!isAmfRecordPath(targetRelative)) return { ok: true, validation: null };
+  const validation = validateMemoryRecord(proposedContent, {
+    expectedPath: toPosixPath(targetRelative),
+    ...(options.workspaceRoot ? { workspaceRoot: options.workspaceRoot } : {})
+  });
+  if (!validation.ok) {
+    return { ok: false, error: `proposed AMF record fails validation: ${validation.errors.join("; ")}`, validation };
+  }
+  if (options.currentContent !== undefined) {
+    const transition = validateMemoryRecordTransition(options.currentContent, proposedContent, {
+      expectedPath: toPosixPath(targetRelative),
+      workspaceRoot: options.workspaceRoot,
+      expectedRevision: options.expectedRevision,
+      expectedTargetSha256: options.expectedTargetSha256
+    });
+    if (!transition.ok) {
+      return {
+        ok: false,
+        error: `proposed AMF revision fails transition validation: ${transition.errors.join("; ")}`,
+        validation,
+        transition
+      };
+    }
+    return { ok: true, validation, transition };
+  }
+  if (!options.allowExistingRevision && validation.metadata.revision !== 1) {
+    return { ok: false, error: "new AMF records must start at revision 1", validation };
+  }
+  return { ok: true, validation };
+}
+
+function summarizeAmfValidation(validation) {
+  if (!validation) return null;
+  const warnings = Array.isArray(validation.warnings) ? [...validation.warnings] : [];
+  const graphProjectionStale = warnings.some((warning) => /derived graph projection is stale/i.test(String(warning)));
+  return {
+    schema: validation.metadata.schema,
+    projection: validation.projection,
+    warnings,
+    graphProjectionStale,
+    regenerateAfterApply: graphProjectionStale,
+    followup: graphProjectionStale
+      ? { action: "graph_reindex", command: "npm run memory:graph:index", required: true }
+      : null
+  };
+}
+
 function parseJsonlText(text, label) {
   const rows = [];
   const lines = text.split(/\r?\n/);
@@ -258,11 +317,26 @@ function proposeEdit(workspaceRoot, config, input) {
 
   let currentContent = "";
   if (fs.existsSync(pathCheck.absolute)) {
-    currentContent = fs.readFileSync(pathCheck.absolute, "utf8");
+    try {
+      currentContent = readFileNoFollowSync(workspaceRoot, pathCheck.absolute);
+    } catch (error) {
+      return { ok: false, error: error.message };
+    }
   }
 
   let proposedContent;
-  if (diff.kind === "replace") {
+  if (diff.kind === "create") {
+    if (!isAmfRecordPath(relativePath)) {
+      return { ok: false, error: "create proposals are restricted to memory/amf/records/<id>.md" };
+    }
+    if (fs.existsSync(pathCheck.absolute)) {
+      return { ok: false, error: `create target already exists: ${toPosixPath(relativePath)}` };
+    }
+    if (typeof diff.content !== "string" || diff.content.trim() === "") {
+      return { ok: false, error: "create proposal requires content" };
+    }
+    proposedContent = diff.content;
+  } else if (diff.kind === "replace") {
     const applied = applyReplace(currentContent, diff);
     if (!applied.ok) return { ok: false, error: applied.error };
     proposedContent = applied.next;
@@ -285,12 +359,16 @@ function proposeEdit(workspaceRoot, config, input) {
 
   const graphValidation = validateGraphJsonl(workspaceRoot, relativePath, proposedContent);
   if (!graphValidation.ok) return { ok: false, error: graphValidation.error };
+  const recordValidation = validateAmfRecordTarget(relativePath, proposedContent, fs.existsSync(pathCheck.absolute)
+    ? { currentContent, workspaceRoot }
+    : { workspaceRoot });
+  if (!recordValidation.ok) return recordValidation;
 
   const proposalsDir = path.join(workspaceRoot, PROPOSALS_DIRNAME);
-  fs.mkdirSync(proposalsDir, { recursive: true });
   const proposalId = makeProposalId();
   const proposalRelative = toPosixPath(path.join(PROPOSALS_DIRNAME, `${proposalId}.json`));
   const proposalAbsolute = path.join(workspaceRoot, proposalRelative);
+  const amfMemory = summarizeAmfValidation(recordValidation.validation);
   const record = {
     proposalId,
     createdAt: new Date().toISOString(),
@@ -299,16 +377,63 @@ function proposeEdit(workspaceRoot, config, input) {
     diff,
     rationale,
     findingIds: Array.isArray(findingIds) ? findingIds : [],
-    validation: { ok: true },
+    expectedRevision: recordValidation.transition?.current.metadata.revision ?? null,
+    expectedTargetSha256: fs.existsSync(pathCheck.absolute) ? recordSha256(currentContent) : null,
+    proposedContentSha256: recordSha256(proposedContent),
+    validation: {
+      ok: true,
+      amfMemory,
+      warnings: amfMemory?.warnings ?? [],
+      graphProjectionStale: amfMemory?.graphProjectionStale ?? false,
+      regenerateAfterApply: amfMemory?.regenerateAfterApply ?? false,
+      followup: amfMemory?.followup ?? null
+    },
     proposedContentLength: proposedContent.length
   };
-  fs.writeFileSync(proposalAbsolute, `${JSON.stringify(record, null, 2)}\n`, "utf8");
+  try {
+    atomicWriteFileSync(workspaceRoot, proposalAbsolute, `${JSON.stringify(record, null, 2)}\n`, {
+      exclusive: true,
+      mode: 0o600
+    });
+  } catch (error) {
+    return { ok: false, error: `could not record proposal: ${error.message}` };
+  }
   return {
     ok: true,
     proposalId,
     proposalPath: workspaceRelative(workspaceRoot, proposalAbsolute),
     status: "recorded",
-    validation: { ok: true }
+    validation: record.validation
+  };
+}
+
+function proposeMemoryRecord(workspaceRoot, config, input) {
+  const { content, rationale, findingIds, source } = input ?? {};
+  const validation = validateMemoryRecord(content, { workspaceRoot });
+  if (!validation.ok) {
+    return {
+      ok: false,
+      error: `AMF record fails validation: ${validation.errors.join("; ")}`,
+      validation
+    };
+  }
+  const targetPath = recordPathFor(validation.metadata);
+  const result = proposeEdit(workspaceRoot, config, {
+    path: targetPath,
+    rationale,
+    findingIds,
+    source: source ?? "pam-memory-record",
+    diff: { kind: "create", content }
+  });
+  if (!result.ok) return result;
+  return {
+    ...result,
+    targetPath,
+    projection: validation.projection,
+    warnings: result.validation?.warnings ?? [],
+    graphProjectionStale: result.validation?.graphProjectionStale ?? false,
+    regenerateAfterApply: result.validation?.regenerateAfterApply ?? false,
+    followup: result.validation?.followup ?? null
   };
 }
 
@@ -319,7 +444,10 @@ export {
   applyUnifiedDiff,
   diffByteSize,
   parseUnifiedDiff,
+  proposeMemoryRecord,
   proposeEdit,
+  summarizeAmfValidation,
+  validateAmfRecordTarget,
   validateGraphJsonl,
   validatePathSafety
 };

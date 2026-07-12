@@ -13,9 +13,10 @@ import { detectMemoryState } from "../memory-migration.mjs";
 
 import { appendEntry } from "./memory-append.mjs";
 import { applyProposal } from "./memory-apply-proposal.mjs";
+import { validateMemoryRecord } from "./amf-memory-record.mjs";
 import { runAudit } from "./memory-audit.mjs";
 import { memoryList, memoryRead, memorySearch } from "./memory-fs.mjs";
-import { proposeEdit } from "./memory-proposals.mjs";
+import { proposeEdit, proposeMemoryRecord } from "./memory-proposals.mjs";
 import { loadWorkspaceConfig, toPosixPath } from "./workspace.mjs";
 
 function readPamVersion(workspaceRoot) {
@@ -86,6 +87,30 @@ function buildToolRegistry({ workspaceRoot, serverVersion }) {
         additionalProperties: false
       },
       handler: async (args) => jsonResultContent(memoryRead(workspaceRoot, args?.path))
+    },
+    {
+      name: "memory_record_validate",
+      description: "Validates an amf-memory/v1 Markdown record and returns its safe graph projection without decrypting sealed content.",
+      inputSchema: {
+        type: "object",
+        properties: {
+          path: { type: "string", description: "AMF record path under memory/amf/records/" }
+        },
+        required: ["path"],
+        additionalProperties: false
+      },
+      handler: async (args) => {
+        const record = memoryRead(workspaceRoot, args?.path);
+        const validation = validateMemoryRecord(record.content, { expectedPath: record.path, workspaceRoot });
+        return jsonResultContent({
+          status: validation.ok ? "valid" : "invalid",
+          path: record.path,
+          errors: validation.errors,
+          warnings: validation.warnings,
+          metadata: validation.metadata,
+          projection: validation.projection
+        });
+      }
     },
     {
       name: "memory_search",
@@ -213,7 +238,7 @@ function buildToolRegistry({ workspaceRoot, serverVersion }) {
     },
     {
       name: "memory_apply_proposal",
-      description: "Applies a previously-recorded proposal (memory/maintenance/proposals/<id>.json) to its target file. Re-validates path safety and re-applies the diff against current content (drift detection). On success, archives the artifact as <id>.applied.json with appliedAt added.",
+      description: "Safely applies a recorded proposal after re-validating path safety, drift, and content. It exclusively reserves <id>.applied.json as status applying, atomically persists the target, finalizes the archive as applied, then removes the live proposal. Retries recover idempotently; archive collisions or identity mismatches fail closed.",
       inputSchema: {
         type: "object",
         properties: {
@@ -226,6 +251,31 @@ function buildToolRegistry({ workspaceRoot, serverVersion }) {
         const result = applyProposal(workspaceRoot, loadConfig(), args ?? {});
         if (!result.ok) {
           return jsonResultContent({ status: "rejected", error: result.error });
+        }
+        return jsonResultContent(result);
+      }
+    },
+    {
+      name: "memory_propose_record",
+      description: "Validates a complete amf-memory/v1 Markdown record and records a create proposal. It never writes the canonical record directly.",
+      inputSchema: {
+        type: "object",
+        properties: {
+          content: { type: "string", description: "Complete AMF Markdown record including frontmatter" },
+          rationale: { type: "string" },
+          findingIds: { type: "array", items: { type: "string" } }
+        },
+        required: ["content", "rationale"],
+        additionalProperties: false
+      },
+      handler: async (args) => {
+        const result = proposeMemoryRecord(workspaceRoot, loadConfig(), args ?? {});
+        if (!result.ok) {
+          return jsonResultContent({
+            status: "rejected",
+            error: result.error,
+            validation: result.validation ?? { ok: false, errors: [result.error] }
+          });
         }
         return jsonResultContent(result);
       }

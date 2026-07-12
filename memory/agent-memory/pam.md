@@ -603,6 +603,19 @@ YYYY-MM-DD.
 Links or references to related notes, decisions, runbooks, or raw sources.
 ```
 
+### 8.4 Structured scoped memory records
+
+An implementation that needs machine-validated scopes, lifecycle, provenance,
+or sealed private claims may enable the optional `amf-memory/v1` record
+contract. These records remain Markdown-first and use the normal PAM
+proposal/apply review boundary.
+
+The record file is canonical. Graph, full-text, vector, and external memory
+engine entries are derived and replaceable. Person, relationship,
+confidential, and restricted claims MUST be sealed; PAM validates their
+envelope but does not own keys or decrypt content. See
+`docs/amf-memory-v1.md` for the complete portable contract.
+
 ---
 
 ## 9. llm-wiki role

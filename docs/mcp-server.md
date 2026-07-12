@@ -7,15 +7,19 @@ markdown + JSONL contract is unchanged; the server is purely additive runtime.
 ## What you get
 
 The server runs locally over stdio (no network, no daemon, no port) and exposes
-15 tools under the `pam` namespace:
+17 tools under the `pam` namespace:
 
 - `pam_version`, `memory_state`, `maintenance_config`: context tools
 - `memory_list`, `memory_read`, `memory_search`: safe filesystem reads under `memory/`
+- `memory_record_validate`: validates `amf-memory/v1` Markdown and returns a safe graph projection
 - `graph_query`, `graph_stats`, `graph_validate`, `graph_reindex`: graph tools
 - `memory_audit`: hygiene checks, returns findings
 - `memory_propose_edit`: records a proposal artifact under `memory/maintenance/proposals/`; never mutates the target file
+- `memory_propose_record`: validates an AMF record and records a create proposal; never writes the record directly
 - `memory_append`: appends a dated section to a managed log; refuses unmanaged paths
-- `memory_apply_proposal`: applies a previously-recorded proposal after re-validating against current content; archives the artifact
+- `memory_apply_proposal`: applies a recorded proposal through an exclusive
+  `applying` reservation, atomic target persistence, `applied` finalization,
+  and idempotent recovery
 - `maintenance_run`: wraps the maintenance CLI (defaults to dry-run)
 
 Write paths through the server are bounded:
@@ -25,7 +29,10 @@ Write paths through the server are bounded:
 - `memory_apply_proposal` only writes to whatever target a previously-recorded
   proposal already passed through the safety validator at propose time, and
   re-validates everything (protected paths, drift, graph integrity) before
-  applying.
+  applying. Archive collisions and proposal-identity mismatches fail closed
+  before target persistence.
+- `memory_propose_record` is the only MCP path for creating an AMF record;
+  creation remains pending until `memory_apply_proposal` re-validates it.
 - `graph_reindex` writes only the derived `memory/graph/catalog.json`.
 - `maintenance_run` is gated by `config` and defaults to dry-run.
 
@@ -135,7 +142,7 @@ set to the repo root. The exact config file location depends on your client.
 Each host prefixes MCP tools with the server name. Claude Code surfaces them as
 `mcp__pam__memory_audit`, `mcp__pam__graph_validate`, and so on. Cursor and
 Codex use similar prefixes. The unprefixed tool name within the server is
-always one of the 15 listed above.
+always one of the 17 listed above.
 
 ## Workspace selection
 
@@ -162,8 +169,8 @@ one-file change in `tools/lib/mcp-transport.mjs`.
 
 ## Safety surface
 
-`memory_propose_edit` is the only tool that produces an artifact intended for
-review. It rejects, with a clear error message:
+`memory_propose_edit` and `memory_propose_record` are the only tools that
+produce artifacts intended for review. They reject, with a clear error message:
 
 - paths matching `config.protectedPaths` (`AGENTS.md`, `CLAUDE.md`, `memory/agent-memory/`, `memory/sources/`);
 - paths that resolve outside the workspace;
@@ -172,10 +179,15 @@ review. It rejects, with a clear error message:
 - diffs over 64 KB;
 - unified-diff hunks whose `before` doesn't match current content;
 - JSONL edits whose result fails `validateGraph`.
+- AMF records that fail schema, lifecycle, scope, provenance, sealing, or path
+  validation.
 
 Proposal artifacts are JSON files under `memory/maintenance/proposals/`.
 Applying a proposal is a manual step that the human takes after review,
 typically via `memory_apply_proposal` below.
+
+For the record schema, sealed-claim rules, lifecycle constraints, and safe graph
+projection, see [AMF memory record v1](amf-memory-v1.md).
 
 ## Write tools
 
@@ -210,9 +222,11 @@ Inputs:
 - `proposalId` (required): the id of a JSON artifact under
   `memory/maintenance/proposals/<id>.json`.
 
-The server:
+The server uses this state machine:
 
-1. Loads the proposal.
+1. Acquires the exclusive proposal lock and loads the archive/proposal state.
+   A pending or `applying` operation also acquires the per-target lock before
+   target validation or persistence.
 2. Re-runs the same safety checks `memory_propose_edit` ran at propose time
    (protected paths, workspace escape, symlinks).
 3. Re-applies the diff against the *current* target content. If the file has
@@ -220,8 +234,23 @@ The server:
    unified-diff hunks don't align), apply is rejected and the artifact is
    untouched.
 4. For JSONL targets, runs `validateGraph` on the proposed result.
-5. On success, writes the new content, renames the artifact to
-   `<id>.applied.json` with `appliedAt` and `status: "applied"` added.
+5. Exclusively reserves `<id>.applied.json` with `status: "applying"` before
+   touching the target. The reservation binds the complete immutable proposal
+   identity. A pre-existing foreign, malformed, or mismatched archive is a
+   collision and fails closed without overwriting the archive, writing the
+   target, or deleting the live proposal.
+6. Atomically persists and fsyncs the target, then reloads and verifies that
+   the same reservation still owns the archive path.
+7. Finalizes the archive as `status: "applied"` with `appliedAt` and the
+   persisted content hash.
+8. Removes the live `<id>.json` proposal only after finalization succeeds.
+
+Retries are idempotent. A matching `applying` reservation resumes the operation
+whether or not the target was already persisted. A matching `applied` archive
+is recovered only after its proposal identity and target hash are verified; a
+lingering live proposal is removed only after that verification. If persistence
+succeeds but finalization does not, the live proposal and recoverable archive
+state remain for a later retry.
 
 Drift detection is intentional. A proposal that fails apply is a signal that
 the target changed since review; re-run the curator, get a fresh proposal,

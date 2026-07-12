@@ -76,9 +76,12 @@ context."
 
 ## Updating Memory
 
-For durable AI memory, add or update graph records first, then keep markdown
-logs/indexes compatible. Do not store secrets, credentials, private data, raw
-private conversations, or machine-specific paths.
+For classic PAM memory, add or update graph records first, then keep markdown
+logs/indexes compatible. When `pam.version.json` enables `amfMemoryV1`, the
+canonical `memory/amf/records/` Markdown record comes first and its graph node is a
+safe derived projection. Create it through the proposal/apply flow and validate
+it again before graph maintenance. Do not store secrets, credentials, private
+data, raw private conversations, or machine-specific paths in plaintext.
 
 In OpenClaw workspaces, first map PAM concepts to existing OpenClaw-native or
 workspace-owned memory. Write only PAM-owned files by default, and do not edit
