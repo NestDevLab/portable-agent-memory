@@ -80,11 +80,28 @@
   "amfApplicator": {
     "version": "amf-receipt-applicator/v1",
     "tokenEnv": "PAM_APPLICATOR_TOKEN",
+    "stateKeyEnv": "PAM_APPLICATOR_STATE_KEY",
+    "stateKeyFileEnv": "PAM_APPLICATOR_STATE_KEY_FILE",
+    "recordIndexPath": "memory/amf/record-index.json",
     "applicators": [],
+    "gitWriter": {
+      "enabled": false,
+      "repoRootEnv": "PAM_GIT_WRITER_REPO_ROOT",
+      "allowedBranches": [],
+      "push": { "enabled": false, "remote": null, "allowedRemotes": [] }
+    },
     "transport": {
       "kind": "disabled",
       "endpointEnv": "PAM_FABRIC_RECEIPT_ENDPOINT"
     }
+  },
+  "amfFabricTransport": {
+    "version": "amf-fabric-transport/v1",
+    "baseUrlEnv": "PAM_FABRIC_BASE_URL",
+    "curatorTokenFileEnv": "PAM_FABRIC_CURATOR_TOKEN_FILE",
+    "applicatorTokenFileEnv": "PAM_FABRIC_APPLICATOR_TOKEN_FILE",
+    "timeoutMs": 10000,
+    "maxResponseBytes": 1048576
   },
   "workspace": {
     "name": "Example Memory Workspace",

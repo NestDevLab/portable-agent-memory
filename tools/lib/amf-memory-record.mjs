@@ -38,7 +38,7 @@ const CONFIDENCE_BASES = new Set(["observed", "asserted", "inferred", "reviewed"
 const SUBJECT_ROLES = new Set(["subject", "object", "participant", "owner"]);
 const LIFECYCLE_STATUSES = new Set(["active", "superseded", "revoked", "expired"]);
 const MEMORY_ID_RE = /^mem_[A-Za-z0-9][A-Za-z0-9_-]{7,127}$/;
-const OPAQUE_REF_RE = /^(?:agent|person|relationship|room|domain):[A-Za-z0-9][A-Za-z0-9._-]{2,127}$/;
+const OPAQUE_REF_RE = /^(?:agent|person|relationship|room|domain):[A-Za-z0-9][A-Za-z0-9._:-]{2,127}$/;
 const HASH_RE = /^[0-9a-f]{64}$/i;
 const RFC3339_UTC_RE = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.(\d{1,9}))?Z$/;
 const NAMESPACED_TYPE_RE = /^[a-z][a-z0-9_-]{0,31}:[a-z][a-z0-9._-]{0,63}$/;
@@ -125,6 +125,13 @@ function sha256(value) {
 
 function recordSha256(content) {
   return sha256(String(content));
+}
+
+function renderMemoryRecord(metadata) {
+  return `---\n${REQUIRED_FIELDS.map((key) => {
+    const value = metadata[key];
+    return `${key}: ${value !== null && typeof value === "object" ? JSON.stringify(value) : String(value)}`;
+  }).join("\n")}\n---\n`;
 }
 
 function isRfc3339Utc(value) {
@@ -635,6 +642,7 @@ export {
   projectMemoryRecord,
   recordPathFor,
   recordSha256,
+  renderMemoryRecord,
   validateMemoryRecord,
   validateMemoryRecordTransition
 };

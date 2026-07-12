@@ -2,7 +2,8 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { loadConfig } from "../memory-maintenance.mjs";
+import { loadConfig, parseConfig } from "../memory-maintenance.mjs";
+import { readOwnerOnlyFileSync } from "./secure-fs.mjs";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -18,6 +19,10 @@ function workspaceConfigPath(workspaceRoot) {
 }
 
 function loadWorkspaceConfig(workspaceRoot = DEFAULT_WORKSPACE_ROOT) {
+  const external = process.env.PAM_WORKSPACE_CONFIG;
+  if (external) {
+    return parseConfig(readOwnerOnlyFileSync(external, { label: "PAM_WORKSPACE_CONFIG", maxBytes: 1024 * 1024 }));
+  }
   const configPath = workspaceConfigPath(workspaceRoot);
   if (fs.existsSync(configPath)) {
     return loadConfig(configPath);

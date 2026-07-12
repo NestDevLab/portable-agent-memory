@@ -4,6 +4,16 @@
 
 ### Added
 
+- PAM 0.6.3 bounded Fabric proposal drain, immutable proposal/digest binding,
+  authenticated HTTPS decision/apply receipts with separate credentials,
+  atomic record-index refresh, and verifier-only apply receipt checks.
+- Opt-in scoped Git delivery with repository/branch/remote allowlists, exclusive
+  locking, unrelated-change refusal, commit recovery, and non-forced
+  fast-forward push. Commit and push remain disabled by default.
+- Scope-bound Fabric receipts, starvation-free authenticated replay cursors,
+  repository/branch/remote/target-bound Git state, and parent-dirfd private-file
+  reads for config, bearer tokens, and applicator state keys.
+
 - PAM 0.6.2 decision receipts and a separately authorized deterministic
   applicator with durable apply-receipt outbox and crash recovery.
 

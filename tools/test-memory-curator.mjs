@@ -17,6 +17,7 @@ import {
   submitCuratorCandidate
 } from "./lib/memory-curator.mjs";
 import { applyDecisionReceipt } from "./lib/memory-receipt-applicator.mjs";
+import { canonicalize, parseMemoryRecord } from "./lib/amf-memory-record.mjs";
 
 const IDS = {
   first: "mem_11111111-1111-4111-8111-111111111111",
@@ -27,11 +28,13 @@ const IDS = {
 const LEDGER_KEY = "synthetic-ledger-key-material-00000000000000000000000000000001";
 const REVIEWER_TOKEN = "synthetic-reviewer-capability-token-0001";
 const APPLICATOR_TOKEN = "synthetic-applicator-capability-token-0001";
+const APPLICATOR_STATE_KEY = "synthetic-applicator-state-key-0000000000000000000001";
 const STATE_DIR = fs.mkdtempSync(path.join(os.tmpdir(), "pam-curator-state-"));
 fs.chmodSync(STATE_DIR, 0o700);
 process.env.PAM_CURATOR_LEDGER_KEY = LEDGER_KEY;
 process.env.PAM_CURATOR_REVIEWER_TOKEN = REVIEWER_TOKEN;
 process.env.PAM_APPLICATOR_TOKEN = APPLICATOR_TOKEN;
+process.env.PAM_APPLICATOR_STATE_KEY = APPLICATOR_STATE_KEY;
 process.env.PAM_CURATOR_STATE_DIR = STATE_DIR;
 const reviewerTokenSha256 = crypto.createHash("sha256").update(REVIEWER_TOKEN).digest("hex");
 const applicatorTokenSha256 = crypto.createHash("sha256").update(APPLICATOR_TOKEN).digest("hex");
@@ -60,6 +63,8 @@ const defaultConfig = {
   amfApplicator: {
     version: "amf-receipt-applicator/v1",
     tokenEnv: "PAM_APPLICATOR_TOKEN",
+    stateKeyEnv: "PAM_APPLICATOR_STATE_KEY",
+    recordIndexPath: "memory/amf/record-index.json",
     applicators: [{
       tokenSha256: applicatorTokenSha256,
       actorId: "service:synthetic-applicator",
@@ -489,7 +494,7 @@ test("applicator receipt binds the exact archive and canonical target", () => {
   const applied = applyApproved(root, approved.decisionId, "receipt-binding-apply-0001");
   assert.equal(applied.ok, true, applied.error);
   assert.equal(applied.receipt.archiveDigest.length, 64);
-  assert.equal(applied.receipt.targetDigest, crypto.createHash("sha256").update(submission().content).digest("hex"));
+  assert.equal(applied.receipt.targetDigest, crypto.createHash("sha256").update(canonicalize(parseMemoryRecord(submission().content).metadata)).digest("hex"));
   assert.equal(applied.receipt.decisionDigest, approved.decisionDigest);
   assert.equal(applied.receipt.canonicalLifecycleAtDecision, "active");
 });

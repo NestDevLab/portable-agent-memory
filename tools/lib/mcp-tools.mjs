@@ -20,7 +20,7 @@ import {
   reviewCuratorCandidate,
   submitCuratorCandidate
 } from "./memory-curator.mjs";
-import { applyDecisionReceipt } from "./memory-receipt-applicator.mjs";
+import { applyDecisionReceipt, deliverAppliedMemoryToGit, verifyFabricApplyReceipt } from "./memory-receipt-applicator.mjs";
 import { validateMemoryRecord } from "./amf-memory-record.mjs";
 import { runAudit } from "./memory-audit.mjs";
 import { memoryList, memoryRead, memorySearch } from "./memory-fs.mjs";
@@ -335,6 +335,12 @@ function buildToolRegistry({ workspaceRoot, serverVersion }) {
             properties: { type: { type: "string" }, id: { type: "string" } },
             required: ["type", "id"],
             additionalProperties: false
+          },
+          fabricProposal: {
+            type: "object",
+            properties: { proposalId: { type: "string" }, proposalDigest: { type: "string", pattern: "^[a-f0-9]{64}$" } },
+            required: ["proposalId", "proposalDigest"],
+            additionalProperties: false
           }
         },
         required: ["content", "rationale", "idempotencyKey", "confidence", "source"],
@@ -374,6 +380,28 @@ function buildToolRegistry({ workspaceRoot, serverVersion }) {
         additionalProperties: false
       },
       handler: async (args) => jsonResultContent(applyDecisionReceipt(workspaceRoot, loadConfig(), args ?? {}))
+    },
+    {
+      name: "memory_verify_apply_receipt",
+      description: "Verifier-only check that a Fabric apply receipt matches authenticated applicator state, the applied archive, the canonical target, and the atomic PAM record index.",
+      inputSchema: {
+        type: "object",
+        properties: { receipt: { type: "object" } },
+        required: ["receipt"],
+        additionalProperties: false
+      },
+      handler: async (args) => jsonResultContent(verifyFabricApplyReceipt(workspaceRoot, loadConfig(), args?.receipt ?? {}))
+    },
+    {
+      name: "memory_git_deliver",
+      description: "Applicator-only opt-in scoped Git commit and optional fast-forward push for one applied AMF record plus its canonical index entry.",
+      inputSchema: {
+        type: "object",
+        properties: { decisionId: { type: "string" }, push: { type: "boolean" } },
+        required: ["decisionId"],
+        additionalProperties: false
+      },
+      handler: async (args) => jsonResultContent(deliverAppliedMemoryToGit(workspaceRoot, loadConfig(), args ?? {}))
     },
     {
       name: "memory_curator_status",

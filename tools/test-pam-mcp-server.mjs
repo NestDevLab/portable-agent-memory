@@ -18,6 +18,7 @@ fs.chmodSync(CURATOR_STATE_DIR, 0o700);
 process.env.PAM_CURATOR_LEDGER_KEY = CURATOR_LEDGER_KEY;
 process.env.PAM_CURATOR_REVIEWER_TOKEN = CURATOR_REVIEWER_TOKEN;
 process.env.PAM_APPLICATOR_TOKEN = APPLICATOR_TOKEN;
+process.env.PAM_APPLICATOR_STATE_KEY = "synthetic-applicator-state-key-0000000000000000000001";
 process.env.PAM_CURATOR_STATE_DIR = CURATOR_STATE_DIR;
 
 function makeWorkspace() {
@@ -98,6 +99,8 @@ function makeWorkspace() {
       amfApplicator: {
         version: "amf-receipt-applicator/v1",
         tokenEnv: "PAM_APPLICATOR_TOKEN",
+        stateKeyEnv: "PAM_APPLICATOR_STATE_KEY",
+        recordIndexPath: "memory/amf/record-index.json",
         applicators: [{
           tokenSha256: crypto.createHash("sha256").update(APPLICATOR_TOKEN).digest("hex"),
           actorId: "service:mcp-applicator",
