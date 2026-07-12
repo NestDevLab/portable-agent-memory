@@ -11,8 +11,7 @@
     "base": "origin/main",
     "strategy": "cherry-pick",
     "stacks": [
-      "amf-pam-contract",
-      "amf-review-notifier"
+      "amf-pam-contract"
     ]
   },
   "stacks": [
@@ -41,19 +40,6 @@
       "meta": {
         "purpose": "Shadow curator promotion and PAM Git writer controls"
       }
-    },
-    {
-      "id": "amf-review-notifier",
-      "branch": "amf/review-notifier",
-      "base": "origin/main",
-      "target_remote": "origin",
-      "target_branch": "main",
-      "integration_branch": "main-integration",
-      "commits": [
-        "8d940158368f3fa8ed5d18ab3e9088bff187f62b",
-        "ab64d17755052b9190704a6bf7b7e207b891a5aa"
-      ],
-      "meta": {}
     }
   ],
   "syncwheel_tracking": "git-tracked",
