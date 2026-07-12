@@ -1,0 +1,18 @@
+[Unit]
+Description=PAM metadata-only review notification relay
+After=network-online.target openclaw-gateway.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=<relay-user>
+Group=<relay-group>
+ExecStart=/usr/local/sbin/amf-review-discord-relay
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=<owner-only-state-dir>
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+LockPersonality=true
+RestrictSUIDSGID=true

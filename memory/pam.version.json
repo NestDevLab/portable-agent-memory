@@ -1,5 +1,5 @@
 {
-  "pamVersion": "0.6.3",
+  "pamVersion": "0.6.4",
   "memoryFormat": "graph-v1",
   "graphSchemaVersion": "pam-graph-v1",
   "features": {

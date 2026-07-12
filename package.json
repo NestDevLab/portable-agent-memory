@@ -1,6 +1,6 @@
 {
   "name": "portable-agent-memory",
-  "version": "0.6.3",
+  "version": "0.6.4",
   "private": false,
   "description": "Markdown-first portable memory, wiki, and maintenance toolkit for AI agents.",
   "type": "module",
@@ -23,6 +23,7 @@
     "memory:synthesis": "node tools/memory-maintenance.mjs synthesis",
     "memory:curator": "node tools/memory-curator.mjs",
     "memory:fabric-worker": "node tools/amf-fabric-worker.mjs",
+    "memory:review-notifier": "node tools/amf-review-notifier.mjs",
     "memory:schedule:install": "node tools/install-memory-maintenance-schedule.mjs",
     "migrations:check": "node tools/check-migrations.mjs",
     "mcp:serve": "node tools/pam-mcp-server.mjs",

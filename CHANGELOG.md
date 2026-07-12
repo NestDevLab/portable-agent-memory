@@ -4,6 +4,9 @@
 
 ### Added
 
+- PAM 0.6.4 authenticated metadata-only review notification scanner and an
+  owner-only, retryable OpenClaw/Discord relay with stable-marker reconciliation.
+
 - PAM 0.6.3 bounded Fabric proposal drain, immutable proposal/digest binding,
   authenticated HTTPS decision/apply receipts with separate credentials,
   atomic record-index refresh, and verifier-only apply receipt checks.

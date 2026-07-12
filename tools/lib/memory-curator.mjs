@@ -2031,6 +2031,8 @@ function curatorStatus(workspaceRoot, config, input = {}, runtime = {}) {
           action: latest.action,
           outcome: receipt.outcome,
           decisionDigest: receipt.decisionDigest,
+          confidence: latest.confidence,
+          reasonCodes: [...latest.reasons],
           actorIdSha256: sha256(latest.actorId),
           reviewerLabelSha256: sha256(latest.reviewerLabel)
         } : null
