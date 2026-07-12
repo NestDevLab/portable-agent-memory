@@ -1,5 +1,5 @@
 {
-  "pamVersion": "0.6.2",
+  "pamVersion": "0.6.3",
   "memoryFormat": "graph-v1",
   "graphSchemaVersion": "pam-graph-v1",
   "features": {
@@ -28,7 +28,16 @@
     "curatorForwardRecovery": true,
     "curatorDecisionReceipts": true,
     "separateReceiptApplicator": true,
-    "durableApplyReceiptOutbox": true
+    "durableApplyReceiptOutbox": true,
+    "fabricProposalBinding": true,
+    "authenticatedHttpsReceiptTransport": true,
+    "atomicAmfRecordIndex": true,
+    "applyReceiptVerification": true,
+    "scopedGitDelivery": true,
+    "scopeAuthorizedFabricReceipts": true,
+    "persistentBoundedReceiptReplay": true,
+    "gitDeliveryContextBinding": true,
+    "dirfdPrivateFileReads": true
   },
   "updated": "2026-07-12"
 }

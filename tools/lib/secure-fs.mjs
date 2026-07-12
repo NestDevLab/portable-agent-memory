@@ -44,6 +44,35 @@ function readFileNoFollowSync(workspaceRoot, absolutePath, encoding = "utf8") {
   }
 }
 
+function readOwnerOnlyFileSync(filename, options = {}) {
+  if (typeof filename !== "string" || !path.isAbsolute(filename)) throw new Error(`${options.label ?? "private file"} path must be absolute`);
+  const absolute = path.resolve(filename);
+  const parent = path.dirname(absolute);
+  const basename = path.basename(absolute);
+  const maxBytes = options.maxBytes ?? 8 * 1024 * 1024;
+  let parentFd;
+  let fd;
+  try {
+    parentFd = fs.openSync(parent, fs.constants.O_RDONLY | (fs.constants.O_DIRECTORY ?? 0) | (fs.constants.O_NOFOLLOW ?? 0));
+    const parentStat = fs.fstatSync(parentFd);
+    const parentHandle = `/proc/self/fd/${parentFd}`;
+    if (!parentStat.isDirectory() || (parentStat.mode & 0o022) !== 0
+        || (typeof process.geteuid === "function" && parentStat.uid !== process.geteuid())
+        || fs.realpathSync(parentHandle) !== parent) throw new Error("parent is unsafe");
+    fd = fs.openSync(`${parentHandle}/${basename}`, fs.constants.O_RDONLY | (fs.constants.O_NOFOLLOW ?? 0));
+    const stat = fs.fstatSync(fd);
+    if (!stat.isFile() || stat.nlink !== 1 || (stat.mode & 0o777) !== 0o600
+        || (typeof process.geteuid === "function" && stat.uid !== process.geteuid())
+        || stat.size < 1 || stat.size > maxBytes) throw new Error("file is unsafe");
+    return fs.readFileSync(fd, options.encoding ?? "utf8");
+  } catch {
+    throw new Error(`${options.label ?? "private file"} must be read through an owner-owned non-writable parent and a mode 0600 regular file`);
+  } finally {
+    if (fd !== undefined) fs.closeSync(fd);
+    if (parentFd !== undefined) fs.closeSync(parentFd);
+  }
+}
+
 function atomicWriteFileSync(workspaceRoot, absolutePath, content, options = {}) {
   const target = assertNoSymlinkPath(workspaceRoot, absolutePath);
   const parent = path.dirname(target);
@@ -350,5 +379,6 @@ export {
   assertNoSymlinkPath,
   atomicWriteFileSync,
   readFileNoFollowSync,
+  readOwnerOnlyFileSync,
   removeRegularFileNoFollowSync
 };

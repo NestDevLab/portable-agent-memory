@@ -83,7 +83,8 @@ const REVIEW_ARTIFACT_FIELDS = new Set([
 const DECISION_RECEIPT_FIELDS = new Set([
   "schema", "receiptType", "outcome", "decisionId", "candidateId",
   "candidateRecordSha256", "candidateRevision", "canonicalRecordId",
-  "canonicalLifecycleAtDecision", "policyDigest", "createdAt", "decisionDigest",
+  "canonicalLifecycleAtDecision", "fabricProposalId", "fabricProposalScope", "fabricProposalDigest",
+  "policyDigest", "createdAt", "decisionDigest",
   "artifactMac"
 ]);
 const DECISION_OUTCOMES = new Set(["review_required", "rejected", "approved_pending_apply"]);
@@ -211,6 +212,19 @@ function normalizeSource(input) {
     return { ok: false, error: "source accepts exactly type and id; RAW payloads are not accepted" };
   }
   return { ok: true, source: { type: source.type, id: source.id } };
+}
+
+function normalizeFabricProposal(input, source) {
+  const binding = input?.fabricProposal;
+  if (source.type !== "fabric") {
+    return binding === undefined ? { ok: true, binding: null } : { ok: false, error: "fabricProposal is accepted only for source.type=fabric" };
+  }
+  if (!exactKeys(binding, new Set(["proposalId", "proposalDigest"]))
+      || typeof binding.proposalId !== "string" || !/^[A-Za-z0-9][A-Za-z0-9-]{0,127}$/.test(binding.proposalId)
+      || !HASH_RE.test(String(binding.proposalDigest ?? ""))) {
+    return { ok: false, error: "source.type=fabric requires an exact proposalId/proposalDigest binding" };
+  }
+  return { ok: true, binding: { proposalId: binding.proposalId, proposalDigest: binding.proposalDigest } };
 }
 
 function curatorPolicy(config = {}) {
@@ -433,7 +447,8 @@ function readCandidate(workspaceRoot, candidateId, key) {
     recordSha256: record.recordSha256,
     rationale: record.rationale,
     source: record.source,
-    confidence: record.confidence
+    confidence: record.confidence,
+    fabricProposal: record.fabricProposal
   };
   if (sha256(canonicalize(inputIdentity)) !== record.inputSha256) {
     return { ok: false, error: "candidate artifact input hash is invalid" };
@@ -1129,6 +1144,9 @@ function decisionReceiptPayload(receipt) {
     candidateRevision: receipt.candidateRevision,
     canonicalRecordId: receipt.canonicalRecordId,
     canonicalLifecycleAtDecision: receipt.canonicalLifecycleAtDecision,
+    fabricProposalId: receipt.fabricProposalId,
+    fabricProposalScope: receipt.fabricProposalScope,
+    fabricProposalDigest: receipt.fabricProposalDigest,
     policyDigest: receipt.policyDigest,
     createdAt: receipt.createdAt
   };
@@ -1147,6 +1165,9 @@ function validateDecisionReceipt(receipt, key, candidate, review) {
     && receipt.candidateRevision === candidate.record.revision
     && receipt.canonicalRecordId === candidate.record.id
     && receipt.canonicalLifecycleAtDecision === candidate.record.lifecycleStatus
+    && receipt.fabricProposalId === (candidate.fabricProposal?.proposalId ?? null)
+    && receipt.fabricProposalScope === (candidate.fabricProposal ? candidate.record.scope.id : null)
+    && receipt.fabricProposalDigest === (candidate.fabricProposal?.proposalDigest ?? null)
     && HASH_RE.test(String(receipt.policyDigest ?? ""))
     && receipt.createdAt === review.createdAt
     && receipt.decisionDigest === sha256(canonicalize(payload))
@@ -1166,6 +1187,9 @@ function ensureDecisionReceipt(workspaceRoot, key, policy, candidate, review, ru
     candidateRevision: candidate.record.revision,
     canonicalRecordId: candidate.record.id,
     canonicalLifecycleAtDecision: candidate.record.lifecycleStatus,
+    fabricProposalId: candidate.fabricProposal?.proposalId ?? null,
+    fabricProposalScope: candidate.fabricProposal ? candidate.record.scope.id : null,
+    fabricProposalDigest: candidate.fabricProposal?.proposalDigest ?? null,
     policyDigest: curatorPolicyDigest(policy),
     createdAt: review.createdAt
   };
@@ -1590,8 +1614,8 @@ function recoverExactPolicyBoundary(workspaceRoot, policy, key, state, candidate
 }
 
 function submitCuratorCandidate(workspaceRoot, config, input, runtime = {}) {
-  const submitFields = new Set(["content", "rationale", "idempotencyKey", "confidence", "source"]);
-  if (!exactKeys(input, submitFields)) return { ok: false, error: "submit input contains missing or unknown fields" };
+  const submitFields = new Set(["content", "rationale", "idempotencyKey", "confidence", "source", "fabricProposal"]);
+  if (!exactKeys(input, submitFields, new Set(["content", "rationale", "idempotencyKey", "confidence", "source"]))) return { ok: false, error: "submit input contains missing or unknown fields" };
   let policy;
   try {
     policy = curatorPolicy(config);
@@ -1617,6 +1641,8 @@ function submitCuratorCandidate(workspaceRoot, config, input, runtime = {}) {
   if (confidence === null) return { ok: false, error: "confidence must be between 0 and 1" };
   const source = normalizeSource(input);
   if (!source.ok) return source;
+  const fabricProposal = normalizeFabricProposal(input, source.source);
+  if (!fabricProposal.ok) return fabricProposal;
   ensureCuratorLayout(workspaceRoot);
   const earlyKeySha256 = sha256(input.idempotencyKey);
   const earlyCandidateId = safeStableId("candidate", earlyKeySha256);
@@ -1624,7 +1650,8 @@ function submitCuratorCandidate(workspaceRoot, config, input, runtime = {}) {
     recordSha256: recordSha256(input.content),
     rationale: input.rationale,
     source: source.source,
-    confidence
+    confidence,
+    fabricProposal: fabricProposal.binding
   }));
   const earlyAbsolute = candidatePath(workspaceRoot, earlyCandidateId);
   let preflightLedger = readDecisionLedger(workspaceRoot, key, state);
@@ -1707,7 +1734,8 @@ function submitCuratorCandidate(workspaceRoot, config, input, runtime = {}) {
     recordSha256: recordSha256(input.content),
     rationale: input.rationale,
     source: source.source,
-    confidence: recordConfidence
+    confidence: recordConfidence,
+    fabricProposal: fabricProposal.binding
   };
   const inputSha256 = sha256(canonicalize(inputIdentity));
   let candidate;
@@ -1733,6 +1761,7 @@ function submitCuratorCandidate(workspaceRoot, config, input, runtime = {}) {
       recordContent: input.content,
       rationale: input.rationale,
       source: source.source,
+      fabricProposal: fabricProposal.binding,
       confidence: recordConfidence,
       targetPath: inspected.targetPath,
       targetExists: inspected.targetExists,
@@ -1817,7 +1846,8 @@ function submitCuratorCandidate(workspaceRoot, config, input, runtime = {}) {
         candidatePath: workspaceRelative(workspaceRoot, absolute),
         decisionId: latest.decisionId,
         decisionDigest: receipt.decisionDigest,
-        duplicateSubmission: true
+        duplicateSubmission: true,
+        fabricReceipt: buildFabricDecisionReceipt(receipt).ok ? buildFabricDecisionReceipt(receipt).receipt : null
       };
     }
   }
@@ -1849,7 +1879,8 @@ function submitCuratorCandidate(workspaceRoot, config, input, runtime = {}) {
     decisionDigest: receipt.receipt.decisionDigest,
     duplicateSubmission,
     duplicateOf: duplicate,
-    policy: evaluation
+    policy: evaluation,
+    fabricReceipt: buildFabricDecisionReceipt(receipt.receipt).ok ? buildFabricDecisionReceipt(receipt.receipt).receipt : null
   };
 }
 
@@ -2178,11 +2209,33 @@ function planCuratorGitWrite(config, input = {}) {
   };
 }
 
+function buildFabricDecisionReceipt(decisionReceipt) {
+  if (!decisionReceipt || !DECISION_OUTCOMES.has(decisionReceipt.outcome)
+      || typeof decisionReceipt.fabricProposalId !== "string"
+      || typeof decisionReceipt.fabricProposalScope !== "string"
+      || !HASH_RE.test(String(decisionReceipt.fabricProposalDigest ?? ""))
+      || !DECISION_ID_RE.test(String(decisionReceipt.decisionId ?? ""))
+      || !HASH_RE.test(String(decisionReceipt.policyDigest ?? ""))
+      || !isTimestamp(decisionReceipt.createdAt)) {
+    return { ok: false, error: "decision receipt is not bound to a Fabric proposal" };
+  }
+  const base = {
+    proposalId: decisionReceipt.fabricProposalId,
+    proposalScope: decisionReceipt.fabricProposalScope,
+    decisionId: decisionReceipt.decisionId,
+    status: decisionReceipt.outcome,
+    proposalDigest: decisionReceipt.fabricProposalDigest,
+    policyDigest: decisionReceipt.policyDigest
+  };
+  return { ok: true, receipt: { kind: "decision", ...base, decisionDigest: sha256(canonicalize(base)), timestamp: decisionReceipt.createdAt } };
+}
+
 export {
   CURATOR_ROOT,
   CURATOR_SCHEMA,
   DEFAULT_POLICY,
   appendDecisionEvent,
+  buildFabricDecisionReceipt,
   curatorPolicy,
   curatorStatus,
   inspectCandidate,

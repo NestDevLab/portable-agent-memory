@@ -77,11 +77,41 @@ Outbox or state alteration fails authentication.
 
 ## Transport
 
-The default transport is disabled, leaving a durable `receipt_queued` outbox.
-Tests may inject a synchronous idempotent sink. HTTP configuration requires an
-HTTPS endpoint from the configured environment variable, but this release does
-not perform live HTTP: dispatch fails closed and leaves the receipt queued until
-an audited Fabric transport is integrated.
+The default inline transport remains disabled. The separate Fabric worker uses
+bounded HTTPS requests, forbids redirects, and reads curator/applicator bearer
+tokens from distinct owner-owned mode-`0600` files. A failed or ambiguous
+request leaves the authenticated outbox queued for exact replay.
+
+The curator polls metadata-only pages (`limit <= 100`, bounded page count), then
+decrypts one exact proposal. `replay-decisions` recovers a crash after a durable
+Fabric ACK. Replay scans a bounded circular window and persists an authenticated
+cursor, so an ACKed filename prefix cannot starve later queued receipts. The
+applicator dispatch command uses only the applicator credential and similarly
+retries after an apply ACK without repeating PAM mutation.
+
+Decision and apply receipts bind `proposalScope` as well as proposal digest.
+Fabric re-authorizes that scope against the current curator/applicator ACL before
+decrypting or advancing proposal state.
+
+After apply, PAM atomically updates `memory/amf/record-index.json`. Sensitive
+entries carry non-secret `contextRefs`; Fabric derives opaque HMAC tags with its
+dedicated routing key and fails closed if either refs or key are unavailable.
+
+Git delivery is a separate applicator-only gate. It is off by default and
+requires an exact repository root, current branch allowlist, exclusive writer
+lock, and a worktree containing no changes outside the canonical record and
+record index. `git-deliver` commits only those paths. `--push` is explicit,
+allows only configured remote names, verifies the remote head is an ancestor,
+and uses a normal non-forced push. Failed commits unstage only the scoped paths;
+committed/pushed state is authenticated and retryable.
+The authenticated state also binds the repository identity, current branch,
+remote URL digest and target ref. A retry from another allowlisted branch or
+after remote retargeting fails closed.
+
+External workspace config, Fabric token files and the applicator state-key file
+are opened through an owner-owned, non-group/world-writable parent dirfd with
+`O_DIRECTORY|O_NOFOLLOW`, then read through `/proc/self/fd`. Both the parent and
+the mode-`0600` regular file are checked with `fstat`.
 
 ## Configuration
 
@@ -103,6 +133,15 @@ an audited Fabric transport is integrated.
   "amfApplicator": {
     "version": "amf-receipt-applicator/v1",
     "tokenEnv": "PAM_APPLICATOR_TOKEN",
+    "stateKeyEnv": "PAM_APPLICATOR_STATE_KEY",
+    "stateKeyFileEnv": "PAM_APPLICATOR_STATE_KEY_FILE",
+    "recordIndexPath": "memory/amf/record-index.json",
+    "gitWriter": {
+      "enabled": false,
+      "repoRootEnv": "PAM_GIT_WRITER_REPO_ROOT",
+      "allowedBranches": [],
+      "push": { "enabled": false, "remote": null, "allowedRemotes": [] }
+    },
     "applicators": [{
       "tokenSha256": "<sha256>",
       "actorId": "service:memory-applicator",
@@ -112,6 +151,12 @@ an audited Fabric transport is integrated.
       "kind": "disabled",
       "endpointEnv": "PAM_FABRIC_RECEIPT_ENDPOINT"
     }
+  },
+  "amfFabricTransport": {
+    "version": "amf-fabric-transport/v1",
+    "baseUrlEnv": "PAM_FABRIC_BASE_URL",
+    "curatorTokenFileEnv": "PAM_FABRIC_CURATOR_TOKEN_FILE",
+    "applicatorTokenFileEnv": "PAM_FABRIC_APPLICATOR_TOKEN_FILE"
   }
 }
 ```
@@ -128,6 +173,11 @@ npm run memory:curator -- apply --input application.json
 npm run memory:curator -- status
 npm run memory:curator -- recover --input recovery.json
 npm run memory:curator -- git-plan --input git-plan.json
+npm run memory:fabric-worker -- drain --limit 10 --max-pages 2
+npm run memory:fabric-worker -- replay-decisions --limit 50
+npm run memory:fabric-worker -- dispatch-apply --decision-id <decision-id>
+npm run memory:fabric-worker -- git-deliver --decision-id <decision-id>
+npm run memory:fabric-worker -- git-deliver --decision-id <decision-id> --push
 ```
 
 MCP adds `memory_receipt_apply` alongside `memory_curator_submit`,

@@ -15,8 +15,7 @@ const ISO_DATE_TITLE_RE = /^## (\d{4}-\d{2}-\d{2}) - .+$/;
 const TEMP_WORKSPACE_IGNORED_PREFIXES = [".codex/", ".claude/", ".opencode/"];
 const TEMP_WORKSPACE_IGNORED_PATHS = new Set([".codex", ".claude", ".opencode"]);
 
-function loadConfig(configPath = CONFIG_PATH) {
-  const raw = fs.readFileSync(configPath, "utf8");
+function parseConfig(raw) {
   const config = JSON.parse(raw);
 
   if (!Array.isArray(config.managedLogs) || config.managedLogs.length === 0) {
@@ -26,6 +25,10 @@ function loadConfig(configPath = CONFIG_PATH) {
   config.synthesis = normalizeSynthesisConfig(config.synthesis);
 
   return config;
+}
+
+function loadConfig(configPath = CONFIG_PATH) {
+  return parseConfig(fs.readFileSync(configPath, "utf8"));
 }
 
 function normalizeSynthesisConfig(input) {
@@ -1135,6 +1138,7 @@ export {
   getArchiveRelativePath,
   getQuarterInfo,
   loadConfig,
+  parseConfig,
   parseLogSections,
   regenerateArchiveIndexes,
   renderRunReport,
