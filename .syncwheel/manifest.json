@@ -26,6 +26,20 @@
         "3dd0fade3d45439a82dccd79ef6d21381ccb58d6"
       ],
       "meta": {}
+    },
+    {
+      "id": "amf-memory-curator",
+      "branch": "amf/memory-curator",
+      "base": "3dd0fade3d45439a82dccd79ef6d21381ccb58d6",
+      "target_remote": "origin",
+      "target_branch": "amf/pam-contract",
+      "integration_branch": "main-integration",
+      "commits": [
+        "8be7685a52f05eb012fbdc1f139384b692f671e0"
+      ],
+      "meta": {
+        "purpose": "Shadow curator promotion and PAM Git writer controls"
+      }
     }
   ],
   "syncwheel_tracking": "git-tracked",
