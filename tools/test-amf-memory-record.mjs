@@ -710,3 +710,23 @@ test("applied recovery binds and preserves the validation warning summary", () =
   assert.match(warningMismatch.error, /validation warnings do not match/);
   assert.equal(fs.existsSync(forgedProposalAbsolute), true);
 });
+
+test("plain sensitive claims validate only with the explicit opt-out", () => {
+  const sensitive = [
+    { scope: { type: "person", id: IDS.person }, visibility: "private" },
+    { scope: { type: "relationship", id: IDS.relationship }, visibility: "restricted" },
+    { claimType: "relationship" },
+    { subjects: [{ identityId: IDS.person, role: "subject" }], visibility: "private" }
+  ];
+  for (const overrides of sensitive) {
+    const strict = validateMemoryRecord(recordContent(baseRecord(overrides)));
+    assert.equal(strict.ok, false);
+    const relaxed = validateMemoryRecord(recordContent(baseRecord(overrides)), { allowPlainSensitiveClaims: true });
+    assert.equal(relaxed.ok, true, relaxed.errors.join("; "));
+  }
+  const relaxedEmpty = validateMemoryRecord(
+    recordContent(baseRecord({ scope: { type: "person", id: IDS.person }, visibility: "private" })).replace(/claim:.*\n/, 'claim: {"encoding":"plain","text":"  "}\n'),
+    { allowPlainSensitiveClaims: true }
+  );
+  assert.equal(relaxedEmpty.ok, false);
+});

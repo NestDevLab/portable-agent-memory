@@ -338,7 +338,7 @@ function validateConfidence(metadata, errors) {
   }
 }
 
-function validateClaim(metadata, body, errors) {
+function validateClaim(metadata, body, errors, options = {}) {
   const claim = metadata.claim;
   if (!claim || typeof claim !== "object" || Array.isArray(claim)) {
     errors.push("claim must be an object");
@@ -352,10 +352,15 @@ function validateClaim(metadata, body, errors) {
   validateExactObject(claim, "claim", fields, errors);
   const subjectRequiresSealing = Array.isArray(metadata.subjects)
     && metadata.subjects.some((subject) => /^(?:person|relationship):/.test(String(subject?.identityId ?? "")));
-  const mustBeSealed = ["person", "relationship"].includes(metadata.scope?.type)
-    || metadata.claimType === "relationship"
-    || ["confidential", "restricted"].includes(metadata.visibility)
-    || subjectRequiresSealing;
+  // Single-tenant deployments may opt out of at-rest sealing for
+  // person-related claims (PAM_ALLOW_PLAIN_SENSITIVE_CLAIMS or per-call option).
+  const allowPlainSensitiveClaims = options.allowPlainSensitiveClaims
+    ?? String(process.env.PAM_ALLOW_PLAIN_SENSITIVE_CLAIMS || "").trim() === "true";
+  const mustBeSealed = !allowPlainSensitiveClaims
+    && (["person", "relationship"].includes(metadata.scope?.type)
+      || metadata.claimType === "relationship"
+      || ["confidential", "restricted"].includes(metadata.visibility)
+      || subjectRequiresSealing);
   if (mustBeSealed && claim.encoding !== "sealed") {
     errors.push("person/relationship scope or subject, relationship claimType, and confidential/restricted visibility require a sealed claim");
   }
@@ -512,7 +517,7 @@ function validateMemoryRecord(content, options = {}) {
   if (!VISIBILITIES.has(metadata.visibility)) errors.push("visibility is invalid");
   validateConfidence(metadata, errors);
   validateSubjects(metadata.subjects, errors);
-  validateClaim(metadata, parsed.body, errors);
+  validateClaim(metadata, parsed.body, errors, options);
   validateLifecycle(metadata, errors);
   validateProvenance(metadata, errors);
   for (const key of ["createdAt", "updatedAt"]) {
