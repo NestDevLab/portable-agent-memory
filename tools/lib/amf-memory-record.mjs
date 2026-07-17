@@ -494,6 +494,9 @@ function validateMemoryRecord(content, options = {}) {
   const errors = [...parsed.errors];
   const warnings = [];
   const metadata = parsed.metadata;
+  const allowPlainSensitiveClaims = options.allowPlainSensitiveClaims
+    ?? String(process.env.PAM_ALLOW_PLAIN_SENSITIVE_CLAIMS || "").trim() === "true";
+  options = { ...options, allowPlainSensitiveClaims };
 
   for (const key of Object.keys(metadata)) {
     if (!RECORD_FIELDS.has(key)) errors.push(`unknown frontmatter key: ${key}`);
@@ -545,7 +548,10 @@ function validateMemoryRecord(content, options = {}) {
     if (!graphValidation.ok) errors.push(`graph projection is invalid: ${graphValidation.errors.join("; ")}`);
     else validateProjectionInWorkspace(projection, options, errors, warnings);
   }
-  if (metadata.claim?.encoding === "plain" && !(metadata.scope?.type === "shared" && metadata.visibility === "shared")) {
+  // With the plain-sensitive opt-out active, graph omission for non-shared
+  // plaintext claims is intended operation, not a review-worthy anomaly.
+  if (metadata.claim?.encoding === "plain" && !(metadata.scope?.type === "shared" && metadata.visibility === "shared")
+      && !allowPlainSensitiveClaims) {
     warnings.push("non-shared plaintext claim is omitted from the graph projection");
   }
 
