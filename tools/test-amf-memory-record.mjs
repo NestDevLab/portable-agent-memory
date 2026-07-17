@@ -730,3 +730,13 @@ test("plain sensitive claims validate only with the explicit opt-out", () => {
   );
   assert.equal(relaxedEmpty.ok, false);
 });
+
+test("graph-omission warning is suppressed under the plain-sensitive opt-out", () => {
+  const metadata = baseRecord({ scope: { type: "person", id: IDS.person }, visibility: "private" });
+  const strict = validateMemoryRecord(recordContent(metadata), { allowPlainSensitiveClaims: true });
+  assert.equal(strict.ok, true);
+  assert.deepEqual(strict.warnings.filter((w) => w.includes("graph projection")), []);
+  const agentPlain = baseRecord({ visibility: "private" });
+  const withoutOptOut = validateMemoryRecord(recordContent(agentPlain));
+  assert.ok(withoutOptOut.warnings.some((w) => w.includes("graph projection")));
+});
