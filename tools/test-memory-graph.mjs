@@ -86,6 +86,22 @@ test("graph catalog reports counts and health", () => {
   assert.equal(catalog.health.status, "valid");
 });
 
+test("graph catalog preserves caller-provided portable entrypoints", () => {
+  const root = makeGraphWorkspace();
+  const catalog = buildCatalog(root, {
+    generatedAt: "2026-08-21T00:00:00.000Z",
+    graphDir: "memory/graph",
+    runtimePath: "docs/agent-memory/runtime.md",
+    versionPath: "docs/agent-memory/pam.version.json",
+    indexPath: "docs/index.md"
+  });
+  assert.deepEqual(catalog.entrypoints, {
+    runtime: "docs/agent-memory/runtime.md",
+    version: "docs/agent-memory/pam.version.json",
+    index: "docs/index.md"
+  });
+});
+
 test("file-only coverage measures graph-first read volume without raw source text", () => {
   const root = makeGraphWorkspace();
   fs.mkdirSync(path.join(root, "benchmarks"), { recursive: true });

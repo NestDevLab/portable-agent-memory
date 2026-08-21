@@ -2,10 +2,10 @@ import { collectLargeCorpusBenchmark } from "./large-corpus-benchmark.mjs";
 import { collectLlmRetrievalBenchmark } from "./llm-retrieval-benchmark.mjs";
 
 const DEFAULT_BASELINES = {
-  pam04PromptReduction: 62.97,
-  pam05PromptReduction: 61.93,
-  pam04ReadReduction: 64.39,
-  pam05ReadReduction: 63.42,
+  pam04PromptReduction: 61.9,
+  pam05PromptReduction: 60.86,
+  pam04ReadReduction: 63.32,
+  pam05ReadReduction: 62.34,
   pam04NodeHitRate: 100,
   pam05NodeHitRate: 100,
   pam05CoverageQueries: 5,

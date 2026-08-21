@@ -39,11 +39,16 @@ function readJsonl(workspaceRoot, relativePath) {
     });
 }
 
-function loadGraph(workspaceRoot = WORKSPACE_ROOT) {
+function graphDir(options = {}) {
+  return options.graphDir ?? GRAPH_DIR;
+}
+
+function loadGraph(workspaceRoot = WORKSPACE_ROOT, options = {}) {
+  const root = graphDir(options);
   return {
-    aliases: readJsonl(workspaceRoot, `${GRAPH_DIR}/aliases.jsonl`),
-    edges: readJsonl(workspaceRoot, `${GRAPH_DIR}/edges.jsonl`),
-    nodes: readJsonl(workspaceRoot, `${GRAPH_DIR}/nodes.jsonl`)
+    aliases: readJsonl(workspaceRoot, `${root}/aliases.jsonl`),
+    edges: readJsonl(workspaceRoot, `${root}/edges.jsonl`),
+    nodes: readJsonl(workspaceRoot, `${root}/nodes.jsonl`)
   };
 }
 
@@ -51,6 +56,7 @@ function validateGraph(graph) {
   const errors = [];
   const warnings = [];
   const nodeIds = new Set();
+  const aliases = new Set();
   const requiredNodeFields = ["id", "k", "n", "d", "st", "c", "u", "src"];
   const requiredEdgeFields = ["f", "r", "t", "st", "c", "u", "src"];
 
@@ -95,6 +101,9 @@ function validateGraph(graph) {
     } else if (!nodeIds.has(alias.id)) {
       errors.push(`Alias target missing: ${alias.id}`);
     }
+    const key = normalize(alias.a);
+    if (key && aliases.has(key)) errors.push(`Duplicate alias: ${alias.a}`);
+    aliases.add(key);
   }
 
   return {
@@ -105,7 +114,8 @@ function validateGraph(graph) {
 }
 
 function buildCatalog(workspaceRoot = WORKSPACE_ROOT, options = {}) {
-  const graph = loadGraph(workspaceRoot);
+  const root = graphDir(options);
+  const graph = loadGraph(workspaceRoot, options);
   const validation = validateGraph(graph);
   return {
     schemaVersion: "pam-graph-v1",
@@ -114,14 +124,14 @@ function buildCatalog(workspaceRoot = WORKSPACE_ROOT, options = {}) {
     edgeCount: graph.edges.length,
     aliasCount: graph.aliases.length,
     sourceFiles: [
-      `${GRAPH_DIR}/nodes.jsonl`,
-      `${GRAPH_DIR}/edges.jsonl`,
-      `${GRAPH_DIR}/aliases.jsonl`
+      `${root}/nodes.jsonl`,
+      `${root}/edges.jsonl`,
+      `${root}/aliases.jsonl`
     ],
     entrypoints: {
-      runtime: "memory/agent-memory/pam-runtime.md",
-      version: "memory/pam.version.json",
-      index: "memory/index.md"
+      runtime: options.runtimePath ?? "memory/agent-memory/pam-runtime.md",
+      version: options.versionPath ?? "memory/pam.version.json",
+      index: options.indexPath ?? "memory/index.md"
     },
     budgets: {
       maxNodeDigestChars: MAX_NODE_DIGEST_CHARS
@@ -190,9 +200,10 @@ function queryGraph(graph, options = {}) {
   };
 }
 
-function graphStats(workspaceRoot = WORKSPACE_ROOT) {
-  const graph = loadGraph(workspaceRoot);
-  const files = [`${GRAPH_DIR}/nodes.jsonl`, `${GRAPH_DIR}/edges.jsonl`, `${GRAPH_DIR}/aliases.jsonl`];
+function graphStats(workspaceRoot = WORKSPACE_ROOT, options = {}) {
+  const root = graphDir(options);
+  const graph = loadGraph(workspaceRoot, options);
+  const files = [`${root}/nodes.jsonl`, `${root}/edges.jsonl`, `${root}/aliases.jsonl`];
   const fileStats = files.map((relativePath) => {
     const content = fs.readFileSync(resolveWorkspacePath(workspaceRoot, relativePath), "utf8");
     return {
@@ -281,12 +292,14 @@ function readCoverageScenario(workspaceRoot, scenarioPath) {
   return {
     path: scenarioPath,
     name: scenario.name,
+    version: scenario.version ?? null,
     queries: scenario.queries
   };
 }
 
 function collectFileOnlyCoverage(workspaceRoot = WORKSPACE_ROOT, options = {}) {
-  const graph = loadGraph(workspaceRoot);
+  const root = graphDir(options);
+  const graph = loadGraph(workspaceRoot, options);
   const validation = validateGraph(graph);
   const scenario = readCoverageScenario(workspaceRoot, options.scenario ?? DEFAULT_COVERAGE_SCENARIO);
   const budget = {
@@ -296,16 +309,17 @@ function collectFileOnlyCoverage(workspaceRoot = WORKSPACE_ROOT, options = {}) {
     minHitRate: options.minHitRate ?? DEFAULT_FILE_ONLY_BUDGET.minHitRate
   };
   const coreFiles = [
-    "memory/pam.version.json",
-    `${GRAPH_DIR}/catalog.json`,
-    `${GRAPH_DIR}/aliases.jsonl`,
-    `${GRAPH_DIR}/nodes.jsonl`,
-    `${GRAPH_DIR}/edges.jsonl`
+    options.versionPath ?? "memory/pam.version.json",
+    options.catalogPath ?? `${root}/catalog.json`,
+    `${root}/aliases.jsonl`,
+    `${root}/nodes.jsonl`,
+    `${root}/edges.jsonl`
   ];
   const corpusFiles = [
-    "AGENT_BOOTSTRAP.md",
-    "README.md",
-    ...listFilesRecursive(workspaceRoot, "memory").filter((file) => /\.(json|jsonl|md)$/i.test(file))
+    ...(options.corpusEntrypoints ?? ["AGENT_BOOTSTRAP.md", "README.md"]),
+    ...(options.corpusRoots ?? ["memory"])
+      .flatMap((rootPath) => listFilesRecursive(workspaceRoot, rootPath))
+      .filter((file) => /\.(json|jsonl|md)$/i.test(file))
   ];
   const coreRead = aggregateFileMetrics(workspaceRoot, coreFiles);
   const corpusRead = aggregateFileMetrics(workspaceRoot, corpusFiles);
@@ -315,20 +329,27 @@ function collectFileOnlyCoverage(workspaceRoot = WORKSPACE_ROOT, options = {}) {
     const expectedId = entry.expectedId ?? null;
     const result = queryGraph(graph, { query, limit: 3 });
     const resultIds = result.results.map((node) => node.id);
+    const oneHopIds = new Set([
+      ...resultIds,
+      ...result.results.flatMap((node) => node.edges.flatMap((edge) => [edge.f, edge.t]))
+    ]);
     const topResult = result.results[0] ?? null;
     const targetSources = result.results.map((node) => node.src);
     const sourceRead = aggregateFileMetrics(workspaceRoot, targetSources.slice(0, budget.maxSourceFilesPerQuery));
     const expectedMatched = expectedId ? resultIds.includes(expectedId) : resultIds.length > 0;
     const topMatched = expectedId ? topResult?.id === expectedId : Boolean(topResult);
+    const oneHopMatched = expectedId ? oneHopIds.has(expectedId) : Boolean(topResult);
     const sourceReadable = result.results.length === 0 || sourceRead.missingFileCount === 0;
     const status = !sourceReadable ? "BLOCKED" : topMatched ? "PASS" : expectedMatched ? "PARTIAL" : "BLOCKED";
 
     return {
       query,
       expectedId,
+      domain: entry.domain ?? null,
       aliasResolvedTo: result.aliasResolvedTo,
       resultIds,
       topId: topResult?.id ?? null,
+      oneHopMatched,
       status,
       sourceRead,
       notes: {
@@ -339,6 +360,7 @@ function collectFileOnlyCoverage(workspaceRoot = WORKSPACE_ROOT, options = {}) {
   });
 
   const passCount = queryResults.filter((entry) => entry.status === "PASS").length;
+  const oneHopCount = queryResults.filter((entry) => entry.oneHopMatched).length;
   const partialCount = queryResults.filter((entry) => entry.status === "PARTIAL").length;
   const blockedCount = queryResults.filter((entry) => entry.status === "BLOCKED").length;
   const hitRate = queryResults.length === 0 ? 0 : passCount / queryResults.length;
@@ -359,6 +381,7 @@ function collectFileOnlyCoverage(workspaceRoot = WORKSPACE_ROOT, options = {}) {
     scenario: {
       path: scenario.path,
       name: scenario.name ?? null,
+      version: scenario.version ?? null,
       queryCount: queryResults.length
     },
     budget,
@@ -376,9 +399,11 @@ function collectFileOnlyCoverage(workspaceRoot = WORKSPACE_ROOT, options = {}) {
     summary: {
       ok,
       passCount,
+      oneHopCount,
       partialCount,
       blockedCount,
       hitRate,
+      oneHopHitRate: queryResults.length === 0 ? 0 : oneHopCount / queryResults.length,
       coreBudgetOk,
       sourceBudgetOk,
       sourceFilesOk,
@@ -406,6 +431,18 @@ function parseArgs(argv) {
       options.limit = Number(args.shift() ?? "10");
     } else if (arg === "--scenario") {
       options.scenario = args.shift();
+    } else if (arg === "--workspace-root") {
+      options.workspaceRoot = args.shift();
+    } else if (arg === "--graph-dir") {
+      options.graphDir = args.shift();
+    } else if (arg === "--version-path") {
+      options.versionPath = args.shift();
+    } else if (arg === "--runtime-path") {
+      options.runtimePath = args.shift();
+    } else if (arg === "--index-path") {
+      options.indexPath = args.shift();
+    } else if (arg === "--catalog-path") {
+      options.catalogPath = args.shift();
     } else if (arg === "--max-files") {
       options.maxCoreFiles = Number(args.shift() ?? DEFAULT_FILE_ONLY_BUDGET.maxCoreFiles);
     } else if (arg === "--max-bytes") {
@@ -443,7 +480,8 @@ function main() {
   const options = parseArgs(process.argv.slice(2));
 
   if (options.command === "validate") {
-    const result = validateGraph(loadGraph());
+    const workspaceRoot = options.workspaceRoot ? path.resolve(options.workspaceRoot) : WORKSPACE_ROOT;
+    const result = validateGraph(loadGraph(workspaceRoot, options));
     print(result, options.json);
     if (!result.ok) {
       process.exitCode = 1;
@@ -452,17 +490,20 @@ function main() {
   }
 
   if (options.command === "query") {
-    print(queryGraph(loadGraph(), options), options.json);
+    const workspaceRoot = options.workspaceRoot ? path.resolve(options.workspaceRoot) : WORKSPACE_ROOT;
+    print(queryGraph(loadGraph(workspaceRoot, options), options), options.json);
     return;
   }
 
   if (options.command === "stats") {
-    print(graphStats(), options.json);
+    const workspaceRoot = options.workspaceRoot ? path.resolve(options.workspaceRoot) : WORKSPACE_ROOT;
+    print(graphStats(workspaceRoot, options), options.json);
     return;
   }
 
   if (options.command === "coverage") {
-    const result = collectFileOnlyCoverage(WORKSPACE_ROOT, options);
+    const workspaceRoot = options.workspaceRoot ? path.resolve(options.workspaceRoot) : WORKSPACE_ROOT;
+    const result = collectFileOnlyCoverage(workspaceRoot, options);
     print(result, options.json);
     if (!result.summary.ok) {
       process.exitCode = 1;
@@ -471,10 +512,11 @@ function main() {
   }
 
   if (options.command === "index") {
-    const catalog = buildCatalog();
-    const catalogPath = resolveWorkspacePath(WORKSPACE_ROOT, `${GRAPH_DIR}/catalog.json`);
+    const workspaceRoot = options.workspaceRoot ? path.resolve(options.workspaceRoot) : WORKSPACE_ROOT;
+    const catalog = buildCatalog(workspaceRoot, options);
+    const catalogPath = resolveWorkspacePath(workspaceRoot, `${graphDir(options)}/catalog.json`);
     fs.writeFileSync(catalogPath, `${JSON.stringify(catalog, null, 2)}\n`, "utf8");
-    print({ wrote: toPosixPath(path.relative(WORKSPACE_ROOT, catalogPath)), health: catalog.health }, options.json);
+    print({ wrote: toPosixPath(path.relative(workspaceRoot, catalogPath)), health: catalog.health }, options.json);
     return;
   }
 

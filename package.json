@@ -1,6 +1,6 @@
 {
   "name": "portable-agent-memory",
-  "version": "0.6.4",
+  "version": "0.6.5",
   "private": false,
   "description": "Markdown-first portable memory, wiki, and maintenance toolkit for AI agents.",
   "type": "module",
@@ -16,6 +16,8 @@
     "memory:graph:query": "node tools/memory-graph.mjs query",
     "memory:graph:stats": "node tools/memory-graph.mjs stats",
     "memory:graph:validate": "node tools/memory-graph.mjs validate",
+    "pam:health": "node tools/pam-health.mjs --json",
+    "pam:capture": "node tools/pam-capture.mjs",
     "memory:maintain": "node tools/memory-maintenance.mjs maintain",
     "memory:maintain:dry-run": "node tools/memory-maintenance.mjs maintain --dry-run",
     "memory:rotate": "node tools/memory-maintenance.mjs rotate",
