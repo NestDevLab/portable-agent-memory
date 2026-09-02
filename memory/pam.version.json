@@ -1,5 +1,5 @@
 {
-  "pamVersion": "0.6.5",
+  "pamVersion": "0.6.6",
   "memoryFormat": "graph-v1",
   "graphSchemaVersion": "pam-graph-v1",
   "features": {
@@ -40,7 +40,8 @@
     "dirfdPrivateFileReads": true,
     "publicHealth": true,
     "shadowCapture": true,
-    "officialSkill": true
+    "officialSkill": true,
+    "deterministicSourceFreshness": true
   },
-  "updated": "2026-08-21"
+  "updated": "2026-09-02"
 }

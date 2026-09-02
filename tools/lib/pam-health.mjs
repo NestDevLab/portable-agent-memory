@@ -1,5 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
+import crypto from "node:crypto";
 
 import {
   collectFileOnlyCoverage,
@@ -54,6 +55,10 @@ function dateMs(value) {
 function ageDays(value, nowMs) {
   const timestamp = dateMs(value);
   return timestamp === null ? null : Math.max(0, Math.floor((nowMs - timestamp) / 86_400_000));
+}
+
+function fileSha256(filePath) {
+  return crypto.createHash("sha256").update(fs.readFileSync(filePath)).digest("hex");
 }
 
 function percentile(values, fraction) {
@@ -125,9 +130,37 @@ function catalogIntegrity(workspaceRoot, graphDir, graph) {
   return { status: errors.length === 0 ? "PASS" : "BLOCKED", errors, catalog: catalog.ok ? catalog.value : null };
 }
 
-function freshness(graph, workspaceRoot, version, catalog, nowMs, staleAfterDays) {
+function sourceFreshnessPolicies(workspaceRoot, registryPath, staleAfterDays) {
+  const policies = new Map();
+  if (!registryPath) return policies;
+  const registry = readJson(workspaceRoot, registryPath);
+  if (!registry.ok || !Array.isArray(registry.value.sources)) return policies;
+  for (const entry of registry.value.sources) {
+    const sourcePath = relativePath(workspaceRoot, entry?.path);
+    if (!sourcePath || (!entry?.freshness && !entry?.sha256)) continue;
+    policies.set(sourcePath, {
+      maxAgeDays: entry.freshness?.maxAgeDays === null
+        ? null
+        : Number.isFinite(entry.freshness?.maxAgeDays)
+          ? entry.freshness.maxAgeDays
+          : staleAfterDays,
+      trackSourceChanges: entry.freshness?.trackSourceChanges !== false,
+      sha256: typeof entry.sha256 === "string" ? entry.sha256.toLowerCase() : null
+    });
+  }
+  return policies;
+}
+
+function freshness(graph, workspaceRoot, version, catalog, nowMs, staleAfterDays, registryPath) {
+  const policies = sourceFreshnessPolicies(workspaceRoot, registryPath, staleAfterDays);
   const ages = graph.nodes.map((node) => ageDays(node.u, nowMs)).filter((value) => value !== null);
-  const staleNodeCount = ages.filter((value) => value > staleAfterDays).length;
+  const staleNodeCount = graph.nodes.filter((node) => {
+    const age = ageDays(node.u, nowMs);
+    const policy = policies.get(posix(node.src));
+    const maxAgeDays = policy ? policy.maxAgeDays : staleAfterDays;
+    return age !== null && maxAgeDays !== null && age > maxAgeDays;
+  }).length;
+  const ageExemptNodeCount = graph.nodes.filter((node) => policies.get(posix(node.src))?.maxAgeDays === null).length;
   const latestNodeBySource = new Map();
   for (const node of graph.nodes) {
     const existing = latestNodeBySource.get(node.src);
@@ -135,10 +168,15 @@ function freshness(graph, workspaceRoot, version, catalog, nowMs, staleAfterDays
   }
   let sourceNewerThanNodeCount = 0;
   for (const [sourcePath, node] of latestNodeBySource) {
+    const policy = policies.get(posix(sourcePath));
+    if (policy?.trackSourceChanges === false) continue;
     const source = absolutePath(workspaceRoot, sourcePath);
     if (!source || !fs.existsSync(source)) continue;
     const updated = dateMs(node.u);
-    if (updated !== null && fs.statSync(source).mtimeMs > updated) sourceNewerThanNodeCount += 1;
+    const changed = policy?.sha256
+      ? fileSha256(source) !== policy.sha256
+      : updated !== null && fs.statSync(source).mtimeMs > updated;
+    if (changed) sourceNewerThanNodeCount += 1;
   }
   const unresolvedObsoleteCount = graph.nodes.filter((node) => node.st === "obsolete").length;
   const unresolvedConflictCount = graph.nodes.filter((node) => node.st === "conflicting").length;
@@ -154,7 +192,9 @@ function freshness(graph, workspaceRoot, version, catalog, nowMs, staleAfterDays
     updatedLast7Days: ages.filter((value) => value <= 7).length,
     updatedLast30Days: ages.filter((value) => value <= 30).length,
     staleNodeCount,
+    ageExemptNodeCount,
     sourceNewerThanNodeCount,
+    mtimeExemptSourceCount: [...policies.values()].filter((policy) => policy.trackSourceChanges === false).length,
     oldestNodeAgeDays: ages.length ? Math.max(...ages) : null,
     medianNodeAgeDays: percentile(ages, 0.5),
     p95NodeAgeDays: percentile(ages, 0.95),
@@ -220,7 +260,26 @@ function coverageHealth(workspaceRoot, registryPath, graph, nowMs) {
       continue;
     }
     const latestNodeUpdate = Math.max(...nodes.map((node) => dateMs(node.u) ?? 0), 0);
-    if (nodes.length === 0 || fs.statSync(source).mtimeMs > latestNodeUpdate) changedRegisteredSourceCount += 1;
+    const trackSourceChanges = entry?.freshness?.trackSourceChanges !== false;
+    const expectedSha256 = typeof entry?.sha256 === "string" ? entry.sha256.toLowerCase() : null;
+    const changed = expectedSha256
+      ? fileSha256(source) !== expectedSha256
+      : fs.statSync(source).mtimeMs > latestNodeUpdate;
+    if (nodes.length === 0 || (trackSourceChanges && changed)) {
+      changedRegisteredSourceCount += 1;
+    }
+    if (entry?.sha256 !== undefined && !/^[a-f0-9]{64}$/i.test(entry.sha256)) {
+      errors.push(`registry source sha256 must be a 64-character hexadecimal digest: ${sourcePath}`);
+    }
+    if (entry?.freshness) {
+      const maxAgeDays = entry.freshness.maxAgeDays;
+      if (maxAgeDays !== undefined && maxAgeDays !== null && (!Number.isFinite(maxAgeDays) || maxAgeDays < 0)) {
+        errors.push(`registry freshness maxAgeDays must be null or a non-negative number: ${sourcePath}`);
+      }
+      if (entry.freshness.trackSourceChanges !== undefined && typeof entry.freshness.trackSourceChanges !== "boolean") {
+        errors.push(`registry freshness trackSourceChanges must be boolean: ${sourcePath}`);
+      }
+    }
   }
   const excluded = Array.isArray(registry.value.excluded) ? registry.value.excluded : [];
   const excludedPatterns = excluded
@@ -303,7 +362,15 @@ export function collectPamHealth(workspaceRoot, options = {}) {
     structural.errors.push("PAM version is missing or invalid");
     structural.status = "BLOCKED";
   }
-  const fresh = freshness(graph, root, version.ok ? version.value : null, catalog.catalog, nowMs, config.staleAfterDays);
+  const fresh = freshness(
+    graph,
+    root,
+    version.ok ? version.value : null,
+    catalog.catalog,
+    nowMs,
+    config.staleAfterDays,
+    config.sourceRegistry
+  );
   const retrieval = retrievalHealth(root, config);
   const coverage = coverageHealth(root, config.sourceRegistry, graph, nowMs);
   const stats = graphStats(root, { graphDir: config.graphDir });

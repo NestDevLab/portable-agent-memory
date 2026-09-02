@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+### Changed
+
+- PAM health source registries may pin a SHA-256 content digest and define
+  per-source age and change-tracking policy. This prevents checkout timestamps
+  and append-only logs from creating false freshness drift.
+
 ### Added
 
 - PAM 0.6.4 authenticated metadata-only review notification scanner and an

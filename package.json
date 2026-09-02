@@ -1,6 +1,6 @@
 {
   "name": "portable-agent-memory",
-  "version": "0.6.5",
+  "version": "0.6.6",
   "private": false,
   "description": "Markdown-first portable memory, wiki, and maintenance toolkit for AI agents.",
   "type": "module",
